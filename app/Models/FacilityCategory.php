@@ -9,9 +9,9 @@ class FacilityCategory extends Model
 {
     use HasFactory;
 
-    protected $table = 'facility_category';
+    protected $table = 'facility_categories';
 
-    protected $fillable = [
+    protected $fillable = [ 
         'name',
         'description',
     ];

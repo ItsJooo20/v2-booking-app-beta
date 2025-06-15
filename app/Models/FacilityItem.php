@@ -16,7 +16,7 @@ class FacilityItem extends Model
     protected $fillable = [
         'facility_id',
         'item_code',
-        'status',
+        // 'status',
         // 'is_borrowed',
         'notes',
     ];

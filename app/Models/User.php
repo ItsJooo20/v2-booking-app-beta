@@ -63,7 +63,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function bookings()
     {
-        // return $this->hasMany(Booking::class);
+        return $this->hasMany(Booking::class);
     }
 
     /**
@@ -101,7 +101,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Check apakah user adalah admin
      */
-    public function isAdmin(): bool
+    public function isAdmin()
     {
         return $this->role === 'admin';
     }
@@ -109,7 +109,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Check apakah user adalah technician
      */
-    public function isTechnician(): bool
+    public function isTechnician()
     {
         return $this->role === 'technician';
     }
@@ -125,7 +125,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Check apakah user adalah regular user
      */
-    public function isUser(): bool
+    public function isUser()
     {
         return $this->role === 'user';
     }
@@ -133,7 +133,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get user's full name with role
      */
-    public function getFullNameWithRoleAttribute(): string
+    public function getFullNameWithRoleAttribute()
     {
         return $this->name . ' (' . ucfirst($this->role) . ')';
     }

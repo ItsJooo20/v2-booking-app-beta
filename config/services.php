@@ -34,5 +34,9 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    
+    'verification' => [
+    'url' => env('FRONTEND_URL') . '/api/email/verify', // Or your mobile app deep link
+    ],
 
 ];
