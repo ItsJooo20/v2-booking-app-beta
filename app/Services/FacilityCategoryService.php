@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FacilityCategory;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class FacilityCategoryService
@@ -24,12 +25,28 @@ class FacilityCategoryService
 
     public function createCategory(array $data): FacilityCategory
     {
+        if (isset($data['image'])) {
+            $data['image_path'] = $this->storeImage($data['image']);
+            unset($data['image']);
+        }
+        
         return FacilityCategory::create($data);
     }
 
     public function updateCategory(int $id, array $data): FacilityCategory
     {
         $category = $this->findById($id);
+        
+        if (isset($data['image'])) {
+            // Delete old image if exists
+            if ($category->image_path) {
+                Storage::disk('public')->delete($category->image_path);
+            }
+            
+            $data['image_path'] = $this->storeImage($data['image']);
+            unset($data['image']);
+        }
+        
         $category->update($data);
         return $category;
     }
@@ -45,11 +62,20 @@ class FacilityCategoryService
             ];
         }
 
+        if ($category->image_path) {
+            Storage::disk('public')->delete($category->image_path);
+        }
+
         $category->delete();
 
         return [
             'success' => true,
             'message' => 'Facility category deleted successfully.'
         ];
+    }
+    
+    private function storeImage($image): string
+    {
+        return $image->store('facility-categories', 'public');
     }
 }

@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\EquipmentReturn;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Booking extends Model
 {
@@ -25,6 +26,11 @@ class Booking extends Model
         'headmaster_approved' => 'boolean',
     ];
 
+    public function equipmentRequests()
+    {
+        return $this->hasMany(BookingEquipmentRequest::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -35,7 +41,10 @@ class Booking extends Model
         return $this->belongsTo(FacilityItem::class, 'facility_item_id');
     }
 
-    
+    public function equipmentReturn()
+    {
+        return $this->hasOne(EquipmentReturn::class, 'booking_id');
+    }    
 
     // Check if booking is currently active
     public function isActive()

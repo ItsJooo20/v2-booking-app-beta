@@ -5,22 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class FacilityCategory extends Model
+class FacilityItemImage extends Model
 {
     use HasFactory;
 
-    protected $table = 'facility_categories';
-
-    protected $fillable = [ 
-        'name',
-        'description',
+    protected $fillable = [
+        'facility_item_id',
         'image_path',
-        'requires_return',
+        'is_primary',
+        'display_order'
     ];
 
-    public function facilities()
+    public function facilityItem()
     {
-        return $this->hasMany(Facility::class, 'category_id');
+        return $this->belongsTo(FacilityItem::class);
     }
 
     public function getImageUrl()
@@ -29,6 +27,6 @@ class FacilityCategory extends Model
             return asset('storage/' . $this->image_path);
         }
         
-        return asset('images/placeholder-category.jpg');
+        return asset('images/placeholder-item.jpg');
     }
 }

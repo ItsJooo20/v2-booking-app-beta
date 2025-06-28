@@ -14,8 +14,10 @@ class StoreFacilityCategoryRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|unique:facility_categories,name|max:50',
+            'name' => 'required|string|max:50|unique:facility_categories',
             'description' => 'nullable|string',
+            'requires_return' => 'sometimes|boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
     }
 }

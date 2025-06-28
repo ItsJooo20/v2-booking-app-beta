@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Facility;
 use App\Models\FacilityItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class FacilityService
@@ -47,12 +48,28 @@ class FacilityService
 
     public function createFacility(array $data): Facility
     {
+        if (isset($data['image'])) {
+            $data['image_path'] = $this->storeImage($data['image']);
+            unset($data['image']);
+        }
+        
         return Facility::create($data);
     }
 
     public function updateFacility(int $id, array $data): Facility
     {
         $facility = $this->findById($id);
+        
+        if (isset($data['image'])) {
+            // Delete old image if exists
+            if ($facility->image_path) {
+                Storage::disk('public')->delete($facility->image_path);
+            }
+            
+            $data['image_path'] = $this->storeImage($data['image']);
+            unset($data['image']);
+        }
+        
         $facility->update($data);
         return $facility;
     }
@@ -68,11 +85,20 @@ class FacilityService
             ];
         }
 
+        if ($facility->image_path) {
+            Storage::disk('public')->delete($facility->image_path);
+        }
+
         $facility->delete();
 
         return [
             'success' => true,
             'message' => 'Facility deleted successfully.'
         ];
+    }
+    
+    private function storeImage($image): string
+    {
+        return $image->store('facilities', 'public');
     }
 }

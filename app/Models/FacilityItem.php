@@ -16,8 +16,6 @@ class FacilityItem extends Model
     protected $fillable = [
         'facility_id',
         'item_code',
-        // 'status',
-        // 'is_borrowed',
         'notes',
     ];
 
@@ -25,7 +23,6 @@ class FacilityItem extends Model
         'is_borrowed' => 'boolean',
     ];
     
-    // Di model Booking
     public function facilityItem()
     {
         return $this->belongsTo(FacilityItem::class, 'facility_item_id');

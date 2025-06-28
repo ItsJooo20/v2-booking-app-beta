@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFacilityCategoryRequest extends FormRequest
@@ -14,8 +15,15 @@ class UpdateFacilityCategoryRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|max:50|unique:facility_categories,name,'.$this->route('facility_category'),
+            'name' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('facility_categories')->ignore($this->route('facility_category')),
+            ],
             'description' => 'nullable|string',
+            'requires_return' => 'sometimes|boolean',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
     }
 }

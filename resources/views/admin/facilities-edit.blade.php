@@ -13,9 +13,41 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form action="{{ route('facilities.update', $facility) }}" method="POST">
+            <form action="{{ route('facilities.update', $facility->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+                
+                <div class="mb-3">
+                    <label for="name" class="form-label">Facility Name</label>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $facility->name) }}" required>
+                    @error('name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description', $facility->description) }}</textarea>
+                    @error('description')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                
+                <div class="mb-3">
+                    <label for="image" class="form-label">Facility Image</label>
+                    @if($facility->image_path)
+                        <div class="mb-2" id="current-image">
+                            <img src="{{ $facility->getImageUrl() }}" alt="{{ $facility->name }}" class="img-thumbnail" style="max-height: 200px;">
+                            <div class="form-text">Current image</div>
+                        </div>
+                    @endif
+                    <input type="file" class="form-control @error('image') is-invalid @enderror" id="image" name="image">
+                    <div class="form-text">Upload a new image to replace the current one (JPEG, PNG, JPG, GIF, max 2MB)</div>
+                    <div id="image-preview" class="mt-2"></div>
+                    @error('image')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
                 
                 <div class="mb-3">
                     <label for="category_id" class="form-label">Category</label>
@@ -31,23 +63,32 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-
-                <div class="mb-3">
-                    <label for="name" class="form-label">Facility Name</label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                           id="name" name="name" value="{{ old('name', $facility->name) }}" required>
-                    @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
                 
-                <div class="mb-3">
-                    <label for="description" class="form-label">Description</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" 
-                              id="description" name="description" rows="3">{{ old('description', $facility->description) }}</textarea>
-                    @error('description')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input @error('can_be_addon') is-invalid @enderror" type="checkbox" id="can_be_addon" name="can_be_addon" value="1" {{ old('can_be_addon', $facility->can_be_addon) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="can_be_addon">
+                                Can be add-on
+                            </label>
+                            <div class="form-text">This facility can be added on to other facilities</div>
+                            @error('can_be_addon')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input @error('can_have_addon') is-invalid @enderror" type="checkbox" id="can_have_addon" name="can_have_addon" value="1" {{ old('can_have_addon', $facility->can_have_addon) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="can_have_addon">
+                                Can have add-ons
+                            </label>
+                            <div class="form-text">This facility can have add-on facilities</div>
+                            @error('can_have_addon')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="text-end mt-4">
@@ -60,3 +101,26 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.getElementById('image').onchange = function(e) {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let preview = document.getElementById('image-preview');
+                preview.innerHTML = `
+                    <img src="${e.target.result}" class="img-thumbnail" style="max-height: 200px;">
+                    <div class="form-text">New image preview</div>
+                `;
+                
+                const currentImage = document.getElementById('current-image');
+                if (currentImage) {
+                    currentImage.style.display = 'none';
+                }
+            }
+            reader.readAsDataURL(this.files[0]);
+        }
+    };
+</script>
+@endpush

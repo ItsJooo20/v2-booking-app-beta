@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use App\Models\Booking;
 use App\Models\FacilityItem;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 
 class BookingService
 {
@@ -174,5 +175,267 @@ class BookingService
         ];
         
         return $colors[$status] ?? '#1A73E8';
+    }
+
+    /**
+     * Update expired bookings including both main bookings and equipment requests
+     */
+    public function updateExpiredBookings(): array
+    {
+        $now = Carbon::now();
+        $updatedCounts = [
+            'main_completed' => 0,
+            'main_needs_return' => 0,
+            'main_cancelled' => 0,
+            'equipment_completed' => 0,
+            'equipment_needs_return' => 0,
+            'equipment_cancelled' => 0,
+            'total' => 0
+        ];
+
+        try {
+            DB::beginTransaction();
+
+            Log::info('UpdateBookingStatus - Current time: ' . $now->toDateTimeString());
+
+            // 1. Handle expired MAIN bookings
+            $mainBookingCounts = $this->updateExpiredMainBookings($now);
+            
+            // 2. Handle expired EQUIPMENT REQUESTS
+            $equipmentRequestCounts = $this->updateExpiredEquipmentRequests($now);
+
+            DB::commit();
+
+            $updatedCounts = [
+                'main_completed' => $mainBookingCounts['completed'],
+                'main_needs_return' => $mainBookingCounts['needs_return'],
+                'main_cancelled' => $mainBookingCounts['cancelled'],
+                'equipment_completed' => $equipmentRequestCounts['completed'],
+                'equipment_needs_return' => $equipmentRequestCounts['needs_return'],
+                'equipment_cancelled' => $equipmentRequestCounts['cancelled'],
+                'total' => array_sum($mainBookingCounts) + array_sum($equipmentRequestCounts)
+            ];
+
+            Log::info('Booking statuses updated successfully', $updatedCounts);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update expired bookings: ' . $e->getMessage());
+            throw $e;
+        }
+
+        return $updatedCounts;
+    }
+
+    /**
+     * Update expired main bookings
+     */
+    private function updateExpiredMainBookings(Carbon $now): array
+    {
+        $counts = ['completed' => 0, 'needs_return' => 0, 'cancelled' => 0];
+
+        // Get expired approved main bookings
+        $expiredApproved = Booking::where('status', 'approved')
+            ->where('end_datetime', '<=', $now)
+            ->with([
+                'facilityItem.facility.category', 
+                'equipmentReturn' => function($query) {
+                    $query->whereNotNull('verified_at');
+                }
+            ])
+            ->get();
+
+        foreach ($expiredApproved as $booking) {
+            $facility = $booking->facilityItem->facility;
+            $category = $facility->category;
+            
+            $requiresReturn = $category->requires_return ?? false;
+
+            Log::info("Processing main booking {$booking->id}: requires_return = " . ($requiresReturn ? 'true' : 'false'));
+
+            if ($requiresReturn) {
+                $hasVerifiedReturn = $booking->equipmentReturn && 
+                                   $booking->equipmentReturn->verified_at !== null;
+
+                if ($hasVerifiedReturn) {
+                    $booking->status = 'completed';
+                    $booking->updated_at = $now;
+                    $booking->save();
+                    $counts['completed']++;
+                    Log::info("Main booking {$booking->id} marked as completed (verified return)");
+                } else {
+                    $booking->status = 'needs return';
+                    $booking->updated_at = $now;
+                    $booking->save();
+                    $counts['needs_return']++;
+                    Log::info("Main booking {$booking->id} marked as needs return");
+                }
+            } else {
+                $booking->status = 'completed';
+                $booking->updated_at = $now;
+                $booking->save();
+                $counts['completed']++;
+                Log::info("Main booking {$booking->id} marked as completed (no return required)");
+            }
+        }
+
+        // Handle expired pending main bookings
+        $expiredPending = Booking::where('status', 'pending')
+            ->where('end_datetime', '<=', $now)
+            ->get();
+
+        foreach ($expiredPending as $booking) {
+            $booking->status = 'cancelled';
+            $booking->updated_at = $now;
+            $booking->save();
+            $counts['cancelled']++;
+            Log::info("Main booking {$booking->id} cancelled (expired while pending)");
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Update expired equipment requests
+     */
+    private function updateExpiredEquipmentRequests(Carbon $now): array
+    {
+        $counts = ['completed' => 0, 'needs_return' => 0, 'cancelled' => 0];
+
+        // Get expired approved equipment requests
+        $expiredApprovedRequests = \App\Models\BookingEquipmentRequest::where('status', 'approved')
+            ->whereHas('booking', function($q) use ($now) {
+                $q->where('end_datetime', '<=', $now);
+            })
+            ->with([
+                'booking',
+                'facilityItem.facility.category',
+                'equipmentReturn' => function($query) {
+                    $query->whereNotNull('verified_at');
+                }
+            ])
+            ->get();
+
+        foreach ($expiredApprovedRequests as $request) {
+            $facility = $request->facilityItem->facility;
+            $category = $facility->category;
+            
+            $requiresReturn = $category->requires_return ?? false;
+
+            Log::info("Processing equipment request {$request->id}: requires_return = " . ($requiresReturn ? 'true' : 'false'));
+
+            if ($requiresReturn) {
+                // Check if equipment return exists for this specific equipment request
+                $hasVerifiedReturn = $this->hasVerifiedEquipmentReturn($request);
+
+                if ($hasVerifiedReturn) {
+                    $request->status = 'completed';
+                    $request->updated_at = $now;
+                    $request->save();
+                    $counts['completed']++;
+                    Log::info("Equipment request {$request->id} marked as completed (verified return)");
+                } else {
+                    $request->status = 'needs return';
+                    $request->updated_at = $now;
+                    $request->save();
+                    $counts['needs_return']++;
+                    Log::info("Equipment request {$request->id} marked as needs return");
+                }
+            } else {
+                $request->status = 'completed';
+                $request->updated_at = $now;
+                $request->save();
+                $counts['completed']++;
+                Log::info("Equipment request {$request->id} marked as completed (no return required)");
+            }
+        }
+
+        // Handle expired pending equipment requests
+        $expiredPendingRequests = \App\Models\BookingEquipmentRequest::where('status', 'pending')
+            ->whereHas('booking', function($q) use ($now) {
+                $q->where('end_datetime', '<=', $now);
+            })
+            ->get();
+
+        foreach ($expiredPendingRequests as $request) {
+            $request->status = 'cancelled';
+            $request->updated_at = $now;
+            $request->save();
+            $counts['cancelled']++;
+            Log::info("Equipment request {$request->id} cancelled (expired while pending)");
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Check if equipment request has verified return
+     * You might need to adjust this based on how you track equipment returns for add-ons
+     */
+    private function hasVerifiedEquipmentReturn($equipmentRequest): bool
+    {
+        // Option 1: If equipment returns are linked to the main booking
+        // and cover all items including add-ons
+        $mainBookingReturn = \App\Models\EquipmentReturn::where('booking_id', $equipmentRequest->booking_id)
+            ->whereNotNull('verified_at')
+            ->first();
+
+        if ($mainBookingReturn) {
+            return true;
+        }
+
+        // Option 2: If you have separate equipment returns for each item
+        // You might need to create a separate table or modify your current structure
+        // For now, let's assume equipment returns are handled at booking level
+        
+        return false;
+    }
+
+
+    /**
+     * Get bookings that are about to expire (within next hour)
+     * Useful for sending notifications
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getBookingsAboutToExpire()
+    {
+        $now = Carbon::now();
+        $oneHourLater = $now->copy()->addHour();
+
+        return Booking::whereIn('status', ['approved', 'pending'])
+            ->whereBetween('end_datetime', [$now, $oneHourLater])
+            ->get();
+    }
+
+    /**
+     * Check if a booking is expired
+     *
+     * @param Booking $booking
+     * @return bool
+     */
+    public function isBookingExpired(Booking $booking): bool
+    {
+        return Carbon::parse($booking->end_datetime)->isPast();
+    }
+
+    public function updateBookingIfExpired(Booking $booking): bool
+    {
+        if (!$this->isBookingExpired($booking)) {
+            return false;
+        }
+
+        $newStatus = match($booking->status) {
+            'approved' => 'completed',
+            'pending' => 'cancelled',
+            default => $booking->status
+        };
+
+        if ($newStatus !== $booking->status) {
+            $booking->update(['status' => $newStatus]);
+            return true;
+        }
+
+        return false;
     }
 }

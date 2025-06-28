@@ -287,9 +287,24 @@
             border-radius: 0 8px 8px 0;
         }
 
-        .page-link svg {
-            width: 16px;
-            height: 16px;
+        .pagination svg {
+            width: 20px !important;
+            height: 20px !important;
+            max-width: 20px !important;
+            max-height: 20px !important;
+            vertical-align: middle;
+        }
+
+        /* Make pagination buttons consistent size */
+        .page-item .page-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 40px;
+            height: 38px;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
         }
 
     </style>
@@ -329,8 +344,8 @@
                             <i class="bi bi-tags me-1"></i> Facility
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ route('facility-categories.index') }}">Facilities</a></li>
-                            <li><a class="dropdown-item" href="{{ route('facilities.index') }}">Category</a></li>
+                            <li><a class="dropdown-item" href="{{ route('facility-categories.index') }}">Categories</a></li>
+                            <li><a class="dropdown-item" href="{{ route('facilities.index') }}">Facilities</a></li>
                             <li><a class="dropdown-item" href="{{ route('facility-items.index') }}">Items</a></li>
                         </ul>
                     </li>

@@ -7,101 +7,152 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3">Facility Categories</h1>
         <a href="{{ route('facility-categories.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i> Add Facility Category
+            <i class="bi bi-plus-lg me-1"></i> Add Category
         </a>
     </div>
 
     @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     @endif
 
     @if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     @endif
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            @if($categories->isEmpty())
-                <div class="text-center py-5">
-                    <i class="bi bi-building mb-2" style="font-size: 2rem;"></i>
-                    <p class="text-muted mb-0">No facility categories found</p>
-                    <p class="text-muted">Start by adding your first facility category</p>
-                    <a href="{{ route('facility-categories.create') }}" class="btn btn-primary mt-3">
-                        <i class="bi bi-plus-lg me-1"></i> Add Facility Category
+    <div class="row">
+        @foreach($categories as $category)
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 {{ $highlightCategory == $category->id ? 'border-success' : '' }}">
+                    <!-- Make the image clickable to view facilities in this category -->
+                    <a href="{{ route('facilities.index', ['category_id' => $category->id]) }}" class="text-decoration-none">
+                        <div class="position-relative">
+                            <img src="{{ $category->getImageUrl() }}" class="card-img-top" alt="{{ $category->name }}" style="height: 200px; object-fit: cover;">
+                            <span class="position-absolute top-0 end-0 badge bg-primary m-2">
+                                {{ $category->facilities_count }} {{ Str::plural('facility', $category->facilities_count) }}
+                            </span>
+                        </div>
                     </a>
-                </div>
-            @else
-                <div class="row">
-                    @foreach($categories as $category)
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 position-relative">
-                                <!-- Modified clickable overlay to route to filtered facilities index -->
-                                <a href="{{ route('facilities.index', ['category_id' => $category->id]) }}" class="stretched-link" style="z-index: 1;"></a>
-                                
-                                <!-- Icon/Picture Placeholder -->
-                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
-                                    <i class="bi bi-building display-4 text-muted"></i>
-                                </div>
-                                
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <h5 class="card-title mb-3">{{ $category->name }}</h5>
-                                        <span class="badge bg-primary rounded-pill">{{ $category->facilities_count }} Facilities</span>
-                                    </div>
-                                    <p class="card-text text-muted">
-                                        {{ Str::limit($category->description, 100) }}
-                                    </p>
-                                </div>
-                                
-                                <!-- Action buttons with higher z-index to stay clickable -->
-                                <div class="card-footer bg-transparent border-top-0 position-relative" style="z-index: 2;">
-                                    <div class="d-flex justify-content-end gap-2">
-                                        <a href="{{ route('facility-categories.edit', $category) }}" class="btn btn-sm btn-outline-warning" title="Edit">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <form action="{{ route('facility-categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this category?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                    <div class="card-body">
+                        <!-- Make the title clickable -->
+                        <h5 class="card-title">
+                            <a href="{{ route('facilities.index', ['category_id' => $category->id]) }}" class="text-decoration-none text-dark">
+                                {{ $category->name }}
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted small">{{ $category->description }}</p>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div>
+                                @if($category->requires_return)
+                                    <span class="badge bg-info" data-bs-toggle="tooltip" title="Items require return">Requires Return</span>
+                                @endif
+                                @if($category->return_photo_required)
+                                    <span class="badge bg-secondary" data-bs-toggle="tooltip" title="Photo needed for return">Return Photo</span>
+                                @endif
                             </div>
                         </div>
-                    @endforeach
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <!-- Add a "View Facilities" button -->
+                                <a href="{{ route('facilities.index', ['category_id' => $category->id]) }}" class="btn btn-sm btn-success">
+                                    <i class="bi bi-collection me-1"></i> View Facilities
+                                </a>
+                            </div>
+                            <div>
+                                <a href="{{ route('facility-categories.edit', $category->id) }}" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('facility-categories.destroy', $category->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this category?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" {{ $category->facilities_count > 0 ? '' : '' }}>
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            @endif
-
-            @if($categories->hasPages())
-                <div class="d-flex justify-content-center mt-4">
-                    {{ $categories->links() }}
-                </div>
-            @endif
-        </div>
+            </div>
+        @endforeach
     </div>
-</div>
 
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center mt-4">
+        {{ $categories->links() }}
+    </div>
+
+    @if($categories->isEmpty())
+        <div class="text-center py-5">
+            <p class="fs-5 text-muted">No facility categories found</p>
+            <a href="{{ route('facility-categories.create') }}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-lg me-1"></i> Add First Category
+            </a>
+        </div>
+    @endif
+</div>
+@endsection
+
+@push('styles')
 <style>
-    .card {
-        transition: transform 0.2s, box-shadow 0.2s;
+    /* Fix oversized pagination arrows */
+    .pagination svg, 
+    nav svg, 
+    .page-item svg, 
+    .page-link svg,
+    [aria-label="Previous"] svg,
+    [aria-label="Next"] svg {
+        width: 20px !important;
+        height: 20px !important;
+        max-width: 20px !important;
+        max-height: 20px !important;
     }
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+
+    .page-link {
+        line-height: 1;
+        padding: 0.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
+    
+    /* Target specifically the pagination container */
+    nav[aria-label="Pagination Navigation"] {
+        max-width: 100%;
+        overflow: hidden;
+    }
+    
+    .pagination .page-item .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
     .card-img-top {
-        transition: opacity 0.2s;
+        transition: transform 0.3s ease;
     }
+    
     .card:hover .card-img-top {
-        opacity: 0.9;
+        transform: scale(1.03);
     }
 </style>
-@endsection
+@endpush
+
+@push('scripts')
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+@endpush

@@ -16,7 +16,10 @@ class Facility extends Model
     protected $fillable = [
         'name',
         'description',
+        'can_be_addon',
+        'can_have_addon',
         'category_id',
+        'image_path',
         'total_items',
         'available_items',
     ];
@@ -36,11 +39,19 @@ class Facility extends Model
         return $this->hasMany(FacilityItem::class);
     }
 
-    // Method to recalculate and update the counts
     public function recalculateCounts()
     {
         $this->total_items = $this->items()->count();
         $this->available_items = $this->items()->where('status', 'available')->count();
         $this->save();
+    }
+    
+    public function getImageUrl()
+    {
+        if ($this->image_path) {
+            return asset('storage/' . $this->image_path);
+        }
+        
+        return asset('images/placeholder-facility.jpg');
     }
 }

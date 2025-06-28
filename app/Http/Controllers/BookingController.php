@@ -31,7 +31,7 @@ class BookingController extends Controller
         
         $upcomingBookings = Auth::user()
             ? $this->bookingService->getUpcomingBookings()
-            : $this->bookingService->getUserUpcomingBookings(Auth::id());
+            : $this->bookingService->getUserUpcomingBookings(Auth::id())->paginate(3);
         
         return view('admin.bookings-index', compact('bookings', 'calendarBookings', 'upcomingBookings'));
     }
@@ -73,7 +73,7 @@ class BookingController extends Controller
 
     public function edit(Booking $booking)
     {
-        $this->authorize('update', $booking);
+        // $this->authorize('update', $booking);
         
         $facilities = $this->facilityService->getAllFacilitiesWithItems();
         return view('admin.bookings-edit', compact('booking', 'facilities'));
@@ -81,7 +81,7 @@ class BookingController extends Controller
 
     public function update(UpdateBookingRequest $request, Booking $booking)
     {
-        $this->authorize('update', $booking);
+        // $this->authorize('update', $booking);
         
         $data = $request->validated();
 
@@ -104,7 +104,7 @@ class BookingController extends Controller
 
     public function destroy(Booking $booking)
     {
-        $this->authorize('delete', $booking);
+        // $this->authorize('delete', $booking);
         
         $this->bookingService->cancelBooking($booking);
         
@@ -133,7 +133,7 @@ class BookingController extends Controller
 
     public function reject(Booking $booking)
     {
-        $this->authorize('approve', $booking);
+        // $this->authorize('approve', $booking);
         
         $this->bookingService->rejectBooking($booking);
         

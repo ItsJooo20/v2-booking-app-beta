@@ -257,6 +257,31 @@
         .badge-primary {
             background-color: var(--primary-color);
         }
+
+                .page-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+.pagination svg {
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    vertical-align: middle;
+}
+
+/* Make pagination buttons consistent size */
+.page-item .page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 40px;
+    height: 38px;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+}
     </style>
     @stack('styles')
 </head>

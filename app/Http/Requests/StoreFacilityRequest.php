@@ -16,7 +16,10 @@ class StoreFacilityRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'can_be_addon' => 'sometimes|boolean',
+            'can_have_addon' => 'sometimes|boolean',
             'category_id' => 'required|exists:facility_categories,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
     }
 
