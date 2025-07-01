@@ -36,7 +36,31 @@ class FacilityApiController extends Controller
         $status = $request->has('status') ? $request->status : null;
         
         $items = $this->facilityService->getItems($facilityId, $status);
-        return $this->successResponse($items);
+        
+        $transformedItems = $items->map(function($item) {
+            $primaryImage = $item->getPrimaryImage();
+            $primaryImageUrl = $primaryImage ? url('storage/' . $primaryImage->image_path) : null;
+            
+            $itemData = $item->toArray();
+            $itemData['primary_image_url'] = $primaryImageUrl;
+            
+            if ($item->images && $item->images->count() > 0) {
+                $itemData['images'] = $item->images->map(function($image) {
+                    return [
+                        'id' => $image->id,
+                        'image_path' => $image->image_path,
+                        'is_primary' => $image->is_primary,
+                        'image_url' => url('storage/' . $image->image_path)
+                    ];
+                });
+            } else {
+                $itemData['images'] = [];
+            }
+            
+            return $itemData;
+        });
+        
+        return $this->successResponse($transformedItems);
     }
 
     public function itemDetails(FacilityItem $item)

@@ -38,7 +38,7 @@ class FacilityApiService
 
     public function getItems(?int $facilityId = null, ?string $status = null): Collection
     {
-        $query = FacilityItem::with(['facility.category'])
+        $query = FacilityItem::with(['facility.category', 'images'])
             ->orderBy('item_code');
 
         if ($facilityId) {
@@ -54,11 +54,7 @@ class FacilityApiService
 
     public function getItemDetails(FacilityItem $item): FacilityItem
     {
-        $item->load(['facility.category', 'bookings' => function($query) {
-            $query->where('status', 'approved')
-                ->where('end_datetime', '>=', now())
-                ->orderBy('start_datetime');
-        }]);
+        $item->load(['facility.category', 'images'])->get();
 
         return $item;
     }

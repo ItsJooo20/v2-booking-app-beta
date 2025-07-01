@@ -14,10 +14,17 @@ class StoreFacilityItemRequest extends FormRequest
     public function rules()
     {
         return [
+            'item_code' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'facility_id' => 'required|exists:facilities,id',
-            'item_code' => 'required|string|max:50|unique:facility_items,item_code',
-            // 'status' => 'sometimes|in:available,booked,under_maintenance',
+            // 'serial_number' => 'nullable|string|max:50',
+            // 'status' => 'required|in:available,in_use,maintenance,retired',
+            // 'purchase_date' => 'nullable|date',
+            // 'purchase_price' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'primary_image' => 'nullable|integer|min:0'
         ];
     }
 

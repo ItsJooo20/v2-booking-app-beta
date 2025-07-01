@@ -5,6 +5,7 @@
 @section('styles')
 <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.css' rel='stylesheet' />
 <style>
+    /* Calendar Styling */
     .fc .fc-button-primary {
         background-color: var(--primary-color);
         border-color: var(--primary-color);
@@ -19,28 +20,92 @@
         padding: 2px 4px;
         border: none;
     }
-    .booking-card {
-        border-left: 4px solid var(--primary-color);
-        transition: all 0.2s;
-        margin-bottom: 1rem;
-    }
-    .booking-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
     #bookingCalendar {
         min-height: 600px;
     }
-    .booking-item {
-        transition: background-color 0.15s;
+    
+    /* Badge styling for statuses */
+    .badge.bg-orange {
+        background-color: #FF9800 !important;
     }
-    .booking-item:hover {
-        background-color: #f8f9fa;
+    
+    .badge.bg-purple {
+        background-color: #9C27B0 !important;
+        color: white !important;
     }
-    .btn-group-sm .btn {
-        line-height: 1;
-        padding-top: 0.15rem;
-        padding-bottom: 0.15rem;
+    
+    /* Fix for badge visibility */
+    .badge {
+        display: inline-block !important;
+        padding: 0.35em 0.65em !important;
+        font-size: 0.75em !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        vertical-align: baseline !important;
+        border-radius: 0.25rem !important;
+    }
+    
+    /* Action indicator */
+    .action-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #dc3545;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    
+    /* Card styling */
+    .booking-card {
+        transition: transform 0.2s;
+    }
+    .booking-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Tab styling */
+    .nav-tabs {
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    .nav-tabs .nav-link {
+        margin-bottom: -1px;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        font-weight: 500;
+        padding: 0.75rem 1.25rem;
+    }
+    
+    .nav-tabs .nav-link:hover, 
+    .nav-tabs .nav-link:focus {
+        border-color: #e9ecef #e9ecef #dee2e6;
+    }
+    
+    .nav-tabs .nav-link.active,
+    .nav-tabs .nav-item.show .nav-link {
+        color: var(--primary-color);
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+        border-bottom: 3px solid var(--primary-color);
+    }
+    
+    .status-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        font-size: 11px;
+        font-weight: 600;
+        background-color: rgba(0,0,0,0.1);
+        color: inherit;
+        border-radius: 10px;
+        margin-left: 4px;
     }
 </style>
 @endsection
@@ -54,87 +119,252 @@
         </a>
     </div>
 
-    <div class="row">
-        @forelse($upcomingBookings as $booking)
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm border-0">
-                <!-- Card Header with Item Code and Status -->
-                <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ $booking->facilityItem->item_code }}</h5>
-                    <span class="badge 
-                        @if($booking->status === 'approved') bg-success
-                        @elseif($booking->status === 'pending') bg-warning text-dark
-                        @elseif($booking->status === 'rejected') bg-danger
-                        @elseif($booking->status === 'completed') bg-primary
-                        @elseif($booking->status === 'cancelled') bg-secondary
-                        @endif">
-                        {{ ucfirst($booking->status) }}
-                    </span>
-                </div>
+    @if(session('success'))
+        <div class="alert alert-success mb-4">
+            <i class="bi bi-check-circle me-2"></i> {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle me-2"></i> {{ session('error') }}
+        </div>
+    @endif
+    
+    @php
+        // Count bookings by status
+        $pendingCount = $upcomingBookings->where('status', 'pending')->count();
+        
+        // Try to get return submitted bookings 
+        $returnSubmitted = \App\Models\Booking::where('status', 'return submitted')->get();
+        $returnCount = $returnSubmitted->count();
+        
+        // Combine for total action count
+        $actionCount = $pendingCount + $returnCount;
+    @endphp
+
+    <!-- Bootstrap Tabs -->
+    <ul class="nav nav-tabs" id="bookingTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="action-tab" data-bs-toggle="tab" data-bs-target="#action-pane" type="button" role="tab" aria-controls="action-pane" aria-selected="true">
+                Action Required
+                <span class="status-count">{{ $actionCount }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-pane" type="button" role="tab" aria-controls="pending-pane" aria-selected="false">
+                Pending
+                <span class="status-count">{{ $pendingCount }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="return-tab" data-bs-toggle="tab" data-bs-target="#return-pane" type="button" role="tab" aria-controls="return-pane" aria-selected="false">
+                Return Submitted
+                <span class="status-count">{{ $returnCount }}</span>
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="bookingTabsContent">        
+        <!-- Action Required Tab -->
+        <div class="tab-pane fade show active" id="action-pane" role="tabpanel" aria-labelledby="action-tab" tabindex="0">
+            <div class="row">
+                @php
+                    $actionBookings = $upcomingBookings->where('status', 'pending')
+                        ->merge($returnSubmitted);
+                @endphp
                 
-                <!-- Card Body with Details -->
-                <div class="card-body pt-0">
-                    <div class="mb-2">
-                        <i class="bi bi-clock text-muted me-1"></i>
-                        <small class="text-muted">
-                            {{ $booking->start_datetime->format('M d, Y g:i A') }} - 
-                            {{ $booking->end_datetime->format('M d, Y g:i A') }}
-                        </small>
-                    </div>
-                    
-                    <p class="card-text mb-2">
-                        {{ \Illuminate\Support\Str::limit($booking->purpose, 100) }}
-                    </p>
-                    
-                    <div class="d-flex align-items-center text-muted small">
-                        <i class="bi bi-person me-1"></i>
-                        {{ $booking->user->name }}
-                    </div>
-                </div>
-                
-                <!-- Card Footer with Actions -->
-                <div class="card-footer bg-white border-top-0 pt-0">
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ route('bookings.show', $booking->id) }}"
-                           class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-eye"></i> View
-                        </a>
-                        <div class="d-flex gap-2">
-                            @if(Auth::id() == $booking->user_id || in_array(Auth::user()->role, ['admin', 'headmaster']))
-                                @if($booking->status != 'cancelled' && $booking->status != 'completed' && $booking->status != 'rejected')
-                                <a href="{{ route('bookings.edit', $booking->id) }}" 
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-pencil"></i>
+                @forelse($actionBookings as $booking)
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm booking-card">
+                        <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <span class="action-dot" title="Action required"></span>
+                                {{ $booking->facilityItem->item_code ?? 'Item' }}
+                            </h5>
+                            <span class="badge 
+                                @if($booking->status === 'pending') bg-warning text-dark
+                                @elseif($booking->status === 'return submitted') bg-purple
+                                @endif" style="display: inline-block !important;">
+                                {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
+                            </span>
+                        </div>
+                        
+                        <div class="card-body pt-2">
+                            <div class="mb-2">
+                                <i class="bi bi-clock text-muted me-1"></i>
+                                <small class="text-muted">
+                                    @if(isset($booking->start_datetime))
+                                        @if($booking->start_datetime instanceof \Carbon\Carbon)
+                                            {{ $booking->start_datetime->format('M d, Y g:i A') }} - 
+                                            {{ $booking->end_datetime->format('M d, Y g:i A') }}
+                                        @else
+                                            {{ date('M d, Y g:i A', strtotime($booking->start_datetime)) }} - 
+                                            {{ date('M d, Y g:i A', strtotime($booking->end_datetime)) }}
+                                        @endif
+                                    @else
+                                        Time not available
+                                    @endif
+                                </small>
+                            </div>
+                            
+                            <p class="card-text mb-2">
+                                {{ isset($booking->purpose) ? \Illuminate\Support\Str::limit($booking->purpose, 100) : 'No purpose provided' }}
+                            </p>
+                            
+                            <div class="d-flex align-items-center text-muted small mb-3">
+                                <i class="bi bi-person me-1"></i>
+                                {{ isset($booking->user) && isset($booking->user->name) ? $booking->user->name : 'User' }}
+                            </div>
+                            
+                            <div class="d-grid">
+                                <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i> View Details & Take Action
                                 </a>
-                                <form action="{{ route('bookings.destroy', $booking->id) }}" method="POST" 
-                                      onsubmit="return confirm('Cancel this booking?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-x-circle"></i>
-                                    </button>
-                                </form>
-                                @endif
-                            @endif
+                            </div>
                         </div>
                     </div>
                 </div>
+                @empty
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No pending actions required</h5>
+                        <p class="text-muted">All bookings have been processed</p>
+                    </div>
+                </div>
+                @endforelse
             </div>
         </div>
-        @empty
-        <div class="col-12">
-            <div class="text-center py-5">
-                <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
-                <h5 class="mt-3 text-muted">No bookings found</h5>
-                <a href="{{ route('bookings.create') }}" class="btn btn-primary mt-3">
-                    <i class="bi bi-plus-circle me-1"></i> Create Booking
-                </a>
+        
+        <!-- Pending Tab -->
+        <div class="tab-pane fade" id="pending-pane" role="tabpanel" aria-labelledby="pending-tab" tabindex="0">
+            <div class="row">
+                @php
+                    $pendingBookings = $upcomingBookings->where('status', 'pending');
+                @endphp
+                
+                @forelse($pendingBookings as $booking)
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm booking-card">
+                        <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <span class="action-dot" title="Action required"></span>
+                                {{ $booking->facilityItem->item_code }}
+                            </h5>
+                            <span class="badge bg-warning text-dark">
+                                Pending
+                            </span>
+                        </div>
+                        
+                        <div class="card-body pt-2">
+                            <div class="mb-2">
+                                <i class="bi bi-clock text-muted me-1"></i>
+                                <small class="text-muted">
+                                    @if($booking->start_datetime instanceof \Carbon\Carbon)
+                                        {{ $booking->start_datetime->format('M d, Y g:i A') }} - 
+                                        {{ $booking->end_datetime->format('M d, Y g:i A') }}
+                                    @else
+                                        {{ date('M d, Y g:i A', strtotime($booking->start_datetime)) }} - 
+                                        {{ date('M d, Y g:i A', strtotime($booking->end_datetime)) }}
+                                    @endif
+                                </small>
+                            </div>
+                            
+                            <p class="card-text mb-2">
+                                {{ \Illuminate\Support\Str::limit($booking->purpose, 100) }}
+                            </p>
+                            
+                            <div class="d-flex align-items-center text-muted small mb-3">
+                                <i class="bi bi-person me-1"></i>
+                                {{ $booking->user->name }}
+                            </div>
+                            
+                            <div class="d-grid">
+                                <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i> View Details & Take Action
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No pending bookings</h5>
+                        <p class="text-muted">All bookings have been processed</p>
+                    </div>
+                </div>
+                @endforelse
             </div>
         </div>
-        @endforelse
+        
+        <!-- Return Submitted Tab -->
+        <div class="tab-pane fade" id="return-pane" role="tabpanel" aria-labelledby="return-tab" tabindex="0">
+            <div class="row">
+                @forelse($returnSubmitted as $booking)
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm booking-card">
+                        <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <span class="action-dot" title="Action required"></span>
+                                {{ $booking->facilityItem->item_code ?? 'Item' }}
+                            </h5>
+                            <span class="badge bg-purple" style="color: white !important; display: inline-block !important;">
+                                Return Submitted
+                            </span>
+                        </div>
+                        
+                        <div class="card-body pt-2">
+                            <div class="mb-2">
+                                <i class="bi bi-clock text-muted me-1"></i>
+                                <small class="text-muted">
+                                    @if(isset($booking->start_datetime))
+                                        @if($booking->start_datetime instanceof \Carbon\Carbon)
+                                            {{ $booking->start_datetime->format('M d, Y g:i A') }} - 
+                                            {{ $booking->end_datetime->format('M d, Y g:i A') }}
+                                        @else
+                                            {{ date('M d, Y g:i A', strtotime($booking->start_datetime)) }} - 
+                                            {{ date('M d, Y g:i A', strtotime($booking->end_datetime)) }}
+                                        @endif
+                                    @else
+                                        Time not available
+                                    @endif
+                                </small>
+                            </div>
+                            
+                            <p class="card-text mb-2">
+                                {{ isset($booking->purpose) ? \Illuminate\Support\Str::limit($booking->purpose, 100) : 'No purpose provided' }}
+                            </p>
+                            
+                            <div class="d-flex align-items-center text-muted small mb-3">
+                                <i class="bi bi-person me-1"></i>
+                                {{ isset($booking->user) && isset($booking->user->name) ? $booking->user->name : 'User' }}
+                            </div>
+                            
+                            <div class="d-grid">
+                                <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i> View Details & Take Action
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No returns pending verification</h5>
+                        <p class="text-muted">All equipment returns have been verified</p>
+                    </div>
+                </div>
+                @endforelse
+            </div>
+        </div>
     </div>
     
-    @if($upcomingBookings->hasPages())
+    @if(isset($upcomingBookings) && method_exists($upcomingBookings, 'hasPages') && $upcomingBookings->hasPages())
     <div class="mt-4">
         {{ $upcomingBookings->onEachSide(1)->links() }}
     </div>
@@ -174,6 +404,14 @@
                     <span class="badge bg-secondary me-1">□</span>
                     <span class="small">Cancelled</span>
                 </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-orange me-1">□</span>
+                    <span class="small">Needs Return</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-purple me-1">□</span>
+                    <span class="small">Return Submitted</span>
+                </div>
             </div>
         </div>
     </div>
@@ -184,6 +422,7 @@
 <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.js'></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Calendar initialization
     const calendarEl = document.getElementById('bookingCalendar');
     
     if (calendarEl) {

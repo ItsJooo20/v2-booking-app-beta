@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use App\Models\EquipmentReturn;
 use App\Services\BookingService;
 use App\Services\FacilityService;
 use Illuminate\Support\Facades\Auth;
@@ -140,4 +141,135 @@ class BookingController extends Controller
         return redirect()->route('bookings.show', $booking->id)
             ->with('success', 'Booking rejected successfully.');
     }
+
+    // Add these methods to your existing BookingController
+
+public function showReturnForm(Booking $booking)
+{
+    // Check if user is allowed to submit return
+    if ($booking->user_id != Auth::id() && !in_array(Auth::user()->role, ['admin', 'headmaster'])) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'You are not authorized to submit a return for this booking.');
+    }
+    
+    // Check if return already exists
+    if ($booking->equipmentReturn) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'A return has already been submitted for this booking.');
+    }
+    
+    // Check if booking is in a valid state for return
+    if (!in_array($booking->status, ['approved', 'needs return'])) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'This booking is not in a valid state for equipment return.');
+    }
+    
+    return view('admin.bookings-return-form', compact('booking'));
+}
+
+public function submitReturn(Request $request, Booking $booking)
+{
+    $request->validate([
+        'return_photo' => 'required|image|max:5120',
+        'user_condition' => 'required|string|max:255',
+        'notes' => 'nullable|string|max:1000',
+    ]);
+    
+    if ($booking->equipmentReturn) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'A return has already been submitted for this booking.');
+    }
+    
+    $now = now();
+    
+    if ($now->lt($booking->start_datetime)) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'Cannot return before the booking start time.');
+    }
+    
+    $photoPath = $request->file('return_photo')->store('equipment_returns', 'public');
+    
+    // Create equipment return
+    EquipmentReturn::create([
+        'booking_id' => $booking->id,
+        'return_date' => $now,
+        'return_photo_path' => $photoPath,
+        'user_condition' => $request->user_condition,
+        'condition_status' => 'pending',
+        'notes' => $request->notes,
+    ]);
+    
+    // Update booking status
+    $booking->update([
+        'status' => 'return submitted'
+    ]);
+    
+    return redirect()->route('bookings.show', $booking->id)
+        ->with('success', 'Return submitted successfully. Awaiting staff verification.');
+}
+
+public function showVerifyForm(Booking $booking)
+{
+    // Check if user is authorized to verify returns
+    if (!in_array(Auth::user()->role, ['admin', 'headmaster'])) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'You are not authorized to verify equipment returns.');
+    }
+    
+    // Check if return exists
+    if (!$booking->equipmentReturn) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'No return has been submitted for this booking.');
+    }
+    
+    // Check if return already verified
+    if ($booking->equipmentReturn->verified_at) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'This return has already been verified.');
+    }
+    
+    return view('admin.bookings-return-verify', compact('booking'));
+}
+
+public function verifyReturn(Request $request, Booking $booking)
+{
+    // Check if user is authorized to verify returns
+    if (!in_array(Auth::user()->role, ['admin', 'headmaster'])) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'You are not authorized to verify equipment returns.');
+    }
+    
+    $request->validate([
+        'condition_status' => 'required|string|in:good,damaged,missing',
+        'notes' => 'nullable|string|max:1000',
+    ]);
+    
+    $equipmentReturn = $booking->equipmentReturn;
+    
+    if (!$equipmentReturn) {
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('error', 'No return has been submitted for this booking.');
+    }
+    
+    // Update equipment return
+    $equipmentReturn->update([
+        'condition_status' => $request->condition_status,
+        'notes' => $request->filled('notes') ? $request->notes : $equipmentReturn->notes,
+        'verified_by' => Auth::id(),
+        'verified_at' => now(),
+    ]);
+    
+    // Update facility item condition
+    $facilityItem = $booking->facilityItem;
+    $facilityItem->condition_status = $request->condition_status;
+    $facilityItem->save();
+    
+    // Update booking status
+    $booking->update([
+        'status' => 'completed'
+    ]);
+    
+    return redirect()->route('bookings.show', $booking->id)
+        ->with('success', 'Return verified and equipment condition updated.');
+}
 }

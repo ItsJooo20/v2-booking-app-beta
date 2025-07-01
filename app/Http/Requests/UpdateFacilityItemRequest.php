@@ -15,15 +15,18 @@ class UpdateFacilityItemRequest extends FormRequest
     public function rules()
     {
         return [
+            'item_code' => 'required|string|max:255',
             'facility_id' => 'required|exists:facilities,id',
-            'item_code' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('facility_items')->ignore($this->route('facility_item'))
-            ],
-            'status' => 'required|in:available,booked,under_maintenance',
+            'serial_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
+            // 'status' => 'required|in:available,in_use,maintenance,retired',
+            // 'purchase_date' => 'nullable|date',
+            // 'purchase_price' => 'nullable|numeric|min:0',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'primary_image' => 'nullable|integer',
+            'delete_images' => 'nullable|array',
+            'delete_images.*' => 'integer|exists:facility_item_images,id'
         ];
     }
 

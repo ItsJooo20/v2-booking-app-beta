@@ -13,4 +13,9 @@ use App\Http\Controllers\BookingController;
         Route::delete('/{booking}/destroy', [BookingController::class, 'destroy'])->name('bookings.destroy');
         Route::post('/{booking}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
         Route::post('/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
+        
+        Route::get('/{booking}/return', [BookingController::class, 'showReturnForm'])->name('bookings.return.show');
+        Route::post('/{booking}/return', [BookingController::class, 'submitReturn'])->name('bookings.return.submit');
+        Route::get('/{booking}/return/verify', [BookingController::class, 'showVerifyForm'])->name('bookings.return.verify.show');
+        Route::post('/{booking}/return/verify', [BookingController::class, 'verifyReturn'])->name('bookings.return.verify');
     });

@@ -21,9 +21,11 @@ class Booking extends Model
     ];
 
     protected $casts = [
+        // 'headmaster_approved' => 'boolean',
         'start_datetime' => 'datetime',
         'end_datetime' => 'datetime',
-        'headmaster_approved' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function equipmentRequests()
@@ -46,7 +48,6 @@ class Booking extends Model
         return $this->hasOne(EquipmentReturn::class, 'booking_id');
     }    
 
-    // Check if booking is currently active
     public function isActive()
     {
         $now = now();

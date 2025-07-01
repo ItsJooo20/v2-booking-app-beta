@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\BookingEquipmentRequest;
 
-class BookingApiService
-{
+class BookingApiService{
     public function getUserBookings(User $user, array $filters = [])
     {
         $query = Booking::with(['facilityItem.facility'])
@@ -93,87 +92,90 @@ class BookingApiService
         return $allEvents->sortBy('start_datetime')->values();
     }
 
-public function getUserBookingHistory(User $user, array $filters)
-{
-    $history = collect();
+    public function getUserBookingHistory(User $user, array $filters)
+    {
+        $history = collect();
 
-    // 1. Get main bookings with all required fields
-    $mainBookingsQuery = Booking::where('user_id', $user->id)
-        ->with(['facilityItem.facility'])
-        ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
-        ->when(isset($filters['time_filter']), fn($q) => $this->applyTimeFilter($q, $filters['time_filter']));
+        // 1. Get main bookings with all required fields
+        $mainBookingsQuery = Booking::where('user_id', $user->id)
+            ->with(['facilityItem.facility'])
+            ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
+            ->when(isset($filters['time_filter']), fn($q) => $this->applyTimeFilter($q, $filters['time_filter']));
 
-    $mainBookings = $mainBookingsQuery->latest('start_datetime')->get();
+        $mainBookings = $mainBookingsQuery->latest('start_datetime')->get();
 
-    // 2. Get equipment requests with parent booking data
-    $equipmentRequestsQuery = BookingEquipmentRequest::with([
-            'booking', 
-            'facilityItem.facility'
-        ])
-        ->whereHas('booking', fn($q) => $q->where('user_id', $user->id))
-        ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
-        ->when(isset($filters['time_filter']), fn($q) => $this->applyTimeFilter($q->whereHas('booking'), $filters['time_filter']));
+        // 2. Get equipment requests with parent booking data
+        $equipmentRequestsQuery = BookingEquipmentRequest::with([
+                'booking', 
+                'facilityItem.facility'
+            ])
+            ->whereHas('booking', fn($q) => $q->where('user_id', $user->id))
+            ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
+            ->when(isset($filters['time_filter']), fn($q) => $this->applyTimeFilter($q->whereHas('booking'), $filters['time_filter']));
 
-    $equipmentRequests = $equipmentRequestsQuery->get();
+        $equipmentRequests = $equipmentRequestsQuery->get();
 
-    // Format all items with consistent fields
-    foreach ($mainBookings as $booking) {
-        $history->push($this->formatHistoryItem($booking, 'main'));
+        // Format all items with consistent fields
+        foreach ($mainBookings as $booking) {
+            $history->push($this->formatHistoryItem($booking, 'main'));
+        }
+
+        foreach ($equipmentRequests as $request) {
+            $history->push($this->formatHistoryItem($request->booking, 'equipment_request', $request));
+        }
+
+        return $history->sortByDesc('start_datetime_sort')->values();
     }
 
-    foreach ($equipmentRequests as $request) {
-        $history->push($this->formatHistoryItem($request->booking, 'equipment_request', $request));
+    private function formatHistoryItem($booking, $type, $request = null)
+    {
+        $baseData = [
+            'id' => $type === 'main' ? $booking->id : $request->id,
+            'booking_id' => $booking->id, // Always the parent booking ID
+            'type' => $type,
+            'facility_name' => $type === 'main' 
+                ? $booking->facilityItem->facility->name 
+                : $request->facilityItem->facility->name,
+            'item_code' => $type === 'main' 
+                ? $booking->facilityItem->item_code 
+                : $request->facilityItem->item_code,
+            'start_datetime' => $booking->start_datetime->format('Y-m-d H:i:s'),
+            'end_datetime' => $booking->end_datetime->format('Y-m-d H:i:s'),
+            'purpose' => $booking->purpose,
+            'status' => $type === 'main' ? $booking->status : $request->status,
+            'start_datetime_sort' => $booking->start_datetime,
+            'created_at' => $type === 'main' 
+                ? $booking->created_at->format('Y-m-d H:i:s') 
+                : $request->created_at->format('Y-m-d H:i:s'),
+            'updated_at' => $type === 'main' 
+                ? $booking->updated_at->format('Y-m-d H:i:s') 
+                : $request->updated_at->format('Y-m-d H:i:s'),
+        ];
+
+        if ($type === 'equipment_request') {
+            $baseData['request_id'] = $request->id;
+        }
+
+        return $baseData;
     }
 
-    return $history->sortByDesc('start_datetime_sort')->values();
-}
-
-private function formatHistoryItem($booking, $type, $request = null)
-{
-    $baseData = [
-        'id' => $type === 'main' ? $booking->id : $request->id,
-        'booking_id' => $booking->id, // Always the parent booking ID
-        'type' => $type,
-        'facility_name' => $type === 'main' 
-            ? $booking->facilityItem->facility->name 
-            : $request->facilityItem->facility->name,
-        'item_code' => $type === 'main' 
-            ? $booking->facilityItem->item_code 
-            : $request->facilityItem->item_code,
-        'start_datetime' => $booking->start_datetime,
-        'end_datetime' => $booking->end_datetime,
-        'purpose' => $booking->purpose,
-        'status' => $type === 'main' ? $booking->status : $request->status,
-        'start_datetime_sort' => $booking->start_datetime,
-        'created_at' => $type === 'main' ? $booking->created_at : $request->created_at,
-        'updated_at' => $type === 'main' ? $booking->updated_at : $request->updated_at,
-    ];
-
-    // Add request-specific fields if needed
-    if ($type === 'equipment_request') {
-        $baseData['request_id'] = $request->id;
+    private function applyTimeFilter($query, $timeFilter)
+    {
+        $today = Carbon::today();
+        
+        return match ($timeFilter) {
+            'today' => $query->whereDate('start_datetime', $today),
+            'week' => $query->whereBetween('start_datetime', [
+                $today->startOfWeek(), 
+                $today->endOfWeek()
+            ]),
+            'month' => $query->whereBetween('start_datetime', [
+                $today->startOfMonth(), 
+                $today->endOfMonth()
+            ]),
+            default => $query
+        };
     }
-
-    return $baseData;
-}
-
-private function applyTimeFilter($query, $timeFilter)
-{
-    $today = Carbon::today();
-    
-    return match ($timeFilter) {
-        'today' => $query->whereDate('start_datetime', $today),
-        'week' => $query->whereBetween('start_datetime', [
-            $today->startOfWeek(), 
-            $today->endOfWeek()
-        ]),
-        'month' => $query->whereBetween('start_datetime', [
-            $today->startOfMonth(), 
-            $today->endOfMonth()
-        ]),
-        default => $query
-    };
-}
 
     public function createBooking(User $user, array $data): Booking
     {
@@ -183,6 +185,8 @@ private function applyTimeFilter($query, $timeFilter)
             $booking->fill($data);
             $booking->status = 'pending';
             $booking->save();
+
+            $booking->load(['facilityItem']);
             
             return $booking;
         });
@@ -301,80 +305,16 @@ private function applyTimeFilter($query, $timeFilter)
     private function applyEventFilters($query, array $filters): void
     {
         if (isset($filters['facility_item_id'])) {
-            $query->where('facility_item_id', $filters['facility_item_id']);
-        }
+                $query->where('facility_item_id', $filters['facility_item_id']);
+            }
 
-        if (isset($filters['start_date']) && isset($filters['end_date'])) {
-            $query->whereBetween('start_datetime', [
-                Carbon::parse($filters['start_date'])->startOfDay(),
-                Carbon::parse($filters['end_date'])->endOfDay()
-            ]);
-        }
-    }
-
-    private function applyHistoryFilters($query, array $filters)
-{
-    if (isset($filters['status'])) {
-        $query->where('status', $filters['status']);
-    }
-
-    if (isset($filters['time_filter'])) {
-        $today = Carbon::today();
-        
-        switch ($filters['time_filter']) {
-            case 'today':
-                $query->whereDate('start_datetime', $today);
-                break;
-            case 'week':
+            if (isset($filters['start_date']) && isset($filters['end_date'])) {
                 $query->whereBetween('start_datetime', [
-                    $today->copy()->startOfWeek(),
-                    $today->copy()->endOfWeek()
+                    Carbon::parse($filters['start_date'])->startOfDay(),
+                    Carbon::parse($filters['end_date'])->endOfDay()
                 ]);
-                break;
-            case 'month':
-                $query->whereBetween('start_datetime', [
-                    $today->copy()->startOfMonth(),
-                    $today->copy()->endOfMonth()
-                ]);
-                break;
+            }
         }
-    }
-}
-
-private function formatHistoryData($booking, $type = 'main')
-{
-    return [
-        'id' => $booking->id,
-        'type' => $type,
-        'facility_name' => $booking->facilityItem->facility->name ?? 'N/A',
-        'item_code' => $booking->facilityItem->item_code ?? 'N/A',
-        'start_datetime' => $booking->start_datetime,
-        'end_datetime' => $booking->end_datetime,
-        'purpose' => $booking->purpose,
-        'status' => $booking->status,
-        'start_datetime_sort' => $booking->start_datetime, // For sorting
-        'created_at' => $booking->created_at,
-        'updated_at' => $booking->updated_at,
-    ];
-}
-
-private function formatEquipmentRequestHistoryData($request)
-{
-    return [
-        'id' => $request->id,
-        'type' => 'equipment_request',
-        'booking_id' => $request->booking_id,
-        'facility_name' => $request->facilityItem->facility->name ?? 'N/A',
-        'item_code' => $request->facilityItem->item_code ?? 'N/A',
-        'start_datetime' => $request->booking->start_datetime,
-        'end_datetime' => $request->booking->end_datetime,
-        'purpose' => $request->booking->purpose,
-        'status' => $request->status,
-        'start_datetime_sort' => $request->booking->start_datetime, // For sorting
-        'created_at' => $request->created_at,
-        'updated_at' => $request->updated_at,
-    ];
-}
 
     private function formatEventData($event, $type = 'main'): array
     {

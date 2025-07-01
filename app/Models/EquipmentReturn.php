@@ -22,6 +22,13 @@ class EquipmentReturn extends Model
         'verified_at',
     ];
 
+    protected $casts = [
+        'return_date' => 'datetime',
+        'verified_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+
     public function booking()
     {
         return $this->belongsTo(Booking::class, 'booking_id');

@@ -48,7 +48,7 @@ class BookingApiController extends Controller
     public function show(Booking $booking)
     {
         // $this->authorize('view', $booking);
-        $booking->load(['user', 'facilityItem.facility']);
+        $booking->load(['user', 'facilityItem.facilityItemImage']);
         return $this->successResponse($booking);
     }
 
@@ -184,6 +184,22 @@ class BookingApiController extends Controller
         Log::info('Debug - Service returned: ' . json_encode($bookings));
         
         return $this->successResponse($bookings);
+    }
+
+    public function cancel(Request $request, Booking $booking)
+    {
+        if ($booking->user_id != $request->user()->id && !$request->user()->isAdmin()) {
+            return $this->errorResponse('You are not authorized to cancel this booking', 403);
+        }
+        
+        if (in_array($booking->status, ['cancelled', 'completed', 'rejected'])) {
+            return $this->errorResponse('This booking cannot be cancelled', 400);
+        }
+        
+        $booking->status = 'cancelled';
+        $booking->save();
+        
+        return $this->successResponse(null, 'Booking cancelled successfully');
     }
 
     private function shouldCheckAvailability(Request $request): bool

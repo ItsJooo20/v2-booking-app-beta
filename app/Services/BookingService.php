@@ -172,6 +172,8 @@ class BookingService
             'rejected' => '#EA4335',
             'completed' => '#1A73E8',
             'cancelled' => '#5F6368',
+            'needs return' => '#FF9800', // Orange color for needs return
+            'return submitted' => '#9C27B0', // Purple for return submitted
         ];
         
         return $colors[$status] ?? '#1A73E8';

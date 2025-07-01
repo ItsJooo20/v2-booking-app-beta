@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\BookingApiController;
 Route::prefix('bookings')->group(function () {
     Route::post('/', [BookingApiController::class, 'store'])->name('api.v1.bookings.store');
     Route::get('/history', [BookingApiController::class, 'userBookingHistory'])->name('api.v1.bookings.history');
+
+    Route::get('/{booking}', [BookingApiController::class, 'show']);
+    Route::post('/{booking}/cancel', [BookingApiController::class, 'cancel']);
 });
 
 Route::get('/approved-events', [BookingApiController::class, 'approvedEvents'])->name('api.v1.bookings.approved');

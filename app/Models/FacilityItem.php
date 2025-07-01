@@ -23,9 +23,9 @@ class FacilityItem extends Model
         'is_borrowed' => 'boolean',
     ];
     
-    public function facilityItem()
+    public function facilityItemImage()
     {
-        return $this->belongsTo(FacilityItem::class, 'facility_item_id');
+        return $this->belongsTo(FacilityItemImage::class, 'facility_id');
     }
 
     public function facility()
@@ -46,5 +46,46 @@ class FacilityItem extends Model
     public function damageReports()
     {
         return $this->hasMany(DamageReport::class, 'facility_item_id');
+    }
+
+    public function images()
+    {
+        return $this->hasMany(FacilityItemImage::class)
+            ->orderByRaw('is_primary DESC')
+            ->orderBy('display_order')
+            ->orderBy('id');
+    }
+
+    public function getPrimaryImage()
+    {
+        $primaryImage = $this->images()->where('is_primary', true)->first();
+        
+        if (!$primaryImage) {
+            $primaryImage = $this->images()->first();
+        }
+        
+        return $primaryImage;
+    }
+    
+    public function getPrimaryImageUrl()
+    {
+        $primaryImage = $this->getPrimaryImage();
+        
+        if ($primaryImage) {
+            return $primaryImage->getImageUrl();
+        }
+        
+        return asset('images/placeholder-item.jpg');
+    }
+    
+    public function getAllImageUrls()
+    {
+        return $this->images->map(function($image) {
+            return [
+                'id' => $image->id,
+                'url' => $image->getImageUrl(),
+                'is_primary' => $image->is_primary
+            ];
+        });
     }
 }
