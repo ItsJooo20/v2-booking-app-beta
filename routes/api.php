@@ -17,6 +17,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/user/change-password', [AuthController::class, 'changePassword']);
+        Route::post('/user/change-phone', [AuthController::class, 'changePhoneNumber']);
+        Route::post('/user/profile-image', [AuthController::class, 'updateProfileImage']);
+        Route::delete('/user/profile-image', [AuthController::class, 'removeProfileImage']);
 
         require __DIR__.'/api/bookings.php';
         require __DIR__.'/api/facilities.php';

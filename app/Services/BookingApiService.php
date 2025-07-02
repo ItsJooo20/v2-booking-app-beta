@@ -40,8 +40,12 @@ class BookingApiService{
      */
     public function getApprovedEvents(array $filters)
     {
-        // Get main bookings
-        $mainBookingsQuery = Booking::with(['facilityItem.facility.category', 'user'])
+        // Get main bookings with facility item images
+        $mainBookingsQuery = Booking::with([
+            'facilityItem.facility.category', 
+            'facilityItem.facilityItemImage', // Add this to load the primary image
+            'user'
+        ])
             ->where('status', 'approved')
             ->where('end_datetime', '>=', now())
             ->orderBy('start_datetime');
@@ -49,15 +53,16 @@ class BookingApiService{
         $this->applyEventFilters($mainBookingsQuery, $filters);
         $mainBookings = $mainBookingsQuery->get();
 
-        // Get equipment requests that are approved and have approved parent bookings
+        // Get equipment requests with facility item images
         $equipmentRequestsQuery = \App\Models\BookingEquipmentRequest::with([
             'booking.user', 
-            'facilityItem.facility.category'
+            'facilityItem.facility.category',
+            'facilityItem.facilityItemImage' // Add this to load the primary image
         ])
             ->where('status', 'approved')
             ->whereHas('booking', function($q) {
                 $q->where('status', 'approved')
-                  ->where('end_datetime', '>=', now());
+                ->where('end_datetime', '>=', now());
             });
 
         // Apply filters for equipment requests
@@ -98,13 +103,12 @@ class BookingApiService{
 
         // 1. Get main bookings with all required fields
         $mainBookingsQuery = Booking::where('user_id', $user->id)
-            ->with(['facilityItem.facility'])
+            ->with(['facilityItem.facility', 'facilityItem.facilityItemImage'])
             ->when(isset($filters['status']), fn($q) => $q->where('status', $filters['status']))
             ->when(isset($filters['time_filter']), fn($q) => $this->applyTimeFilter($q, $filters['time_filter']));
 
         $mainBookings = $mainBookingsQuery->latest('start_datetime')->get();
 
-        // 2. Get equipment requests with parent booking data
         $equipmentRequestsQuery = BookingEquipmentRequest::with([
                 'booking', 
                 'facilityItem.facility'
@@ -127,36 +131,39 @@ class BookingApiService{
         return $history->sortByDesc('start_datetime_sort')->values();
     }
 
-    private function formatHistoryItem($booking, $type, $request = null)
+    protected function formatHistoryItem($booking, $type, $equipmentRequest = null)
     {
-        $baseData = [
-            'id' => $type === 'main' ? $booking->id : $request->id,
-            'booking_id' => $booking->id, // Always the parent booking ID
-            'type' => $type,
-            'facility_name' => $type === 'main' 
-                ? $booking->facilityItem->facility->name 
-                : $request->facilityItem->facility->name,
-            'item_code' => $type === 'main' 
-                ? $booking->facilityItem->item_code 
-                : $request->facilityItem->item_code,
-            'start_datetime' => $booking->start_datetime->format('Y-m-d H:i:s'),
-            'end_datetime' => $booking->end_datetime->format('Y-m-d H:i:s'),
-            'purpose' => $booking->purpose,
-            'status' => $type === 'main' ? $booking->status : $request->status,
-            'start_datetime_sort' => $booking->start_datetime,
-            'created_at' => $type === 'main' 
-                ? $booking->created_at->format('Y-m-d H:i:s') 
-                : $request->created_at->format('Y-m-d H:i:s'),
-            'updated_at' => $type === 'main' 
-                ? $booking->updated_at->format('Y-m-d H:i:s') 
-                : $request->updated_at->format('Y-m-d H:i:s'),
-        ];
-
-        if ($type === 'equipment_request') {
-            $baseData['request_id'] = $request->id;
+        $facilityItem = $type === 'main' ? $booking->facilityItem : $equipmentRequest->facilityItem;
+        $facility = $facilityItem ? $facilityItem->facility : null;
+        
+        // Get the image path
+        $imagePath = null;
+        if ($facilityItem) {
+            // Try to get the primary image first
+            if ($facilityItem->facilityItemImage) {
+                $imagePath = $facilityItem->facilityItemImage->image_path;
+            } 
+            // If no primary image, try using the getPrimaryImageUrl method if available
+            else if (method_exists($facilityItem, 'getPrimaryImageUrl')) {
+                $imagePath = $facilityItem->getPrimaryImageUrl();
+            }
         }
-
-        return $baseData;
+        
+        return [
+            'id' => $type === 'main' ? $booking->id : $equipmentRequest->id,
+            'booking_id' => $booking->id,
+            'type' => $type,
+            'facility_name' => $facility ? $facility->name : null,
+            'item_code' => $facilityItem ? $facilityItem->item_code : null,
+            'start_datetime' => $booking->start_datetime ? $booking->start_datetime->format('Y-m-d H:i:s') : null,
+            'end_datetime' => $booking->end_datetime ? $booking->end_datetime->format('Y-m-d H:i:s') : null,
+            'purpose' => $booking->purpose,
+            'status' => $booking->status,
+            'image_path' => $imagePath, // Add the image path to the response
+            'start_datetime_sort' => $booking->start_datetime,
+            'created_at' => $booking->created_at ? $booking->created_at->format('Y-m-d H:i:s') : null,
+            'updated_at' => $booking->updated_at ? $booking->updated_at->format('Y-m-d H:i:s') : null,
+        ];
     }
 
     private function applyTimeFilter($query, $timeFilter)
