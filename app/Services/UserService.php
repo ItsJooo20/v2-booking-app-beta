@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -59,6 +60,7 @@ class UserService
         }
         $user->role = $data['role'];
         $user->phone = $data['phone'];
+        $user->email_verified_at = Carbon::now();
         $user->save();
     }
 

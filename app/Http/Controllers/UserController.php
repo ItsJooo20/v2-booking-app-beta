@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\UserService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
@@ -57,12 +58,14 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        // $tanggal = Carbon::now();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|in:admin,technician,user,headmaster',
             'phone' => 'nullable|string|max:20',
+            // 'email_verified_at' => $tanggal,
         ]);
 
         $this->userService->updateUser($user, $validated);

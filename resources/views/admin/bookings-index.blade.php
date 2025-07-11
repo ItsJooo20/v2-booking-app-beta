@@ -107,6 +107,22 @@
         border-radius: 10px;
         margin-left: 4px;
     }
+    
+    /* Custom Pagination Styling */
+    .custom-pagination .page-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        min-width: 36px;
+        padding: 0 10px;
+        font-size: 0.875rem;
+    }
+    
+    .custom-pagination .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
 </style>
 @endsection
 
@@ -364,9 +380,72 @@
         </div>
     </div>
     
+    <!-- Custom Pagination (No SVGs) -->
     @if(isset($upcomingBookings) && method_exists($upcomingBookings, 'hasPages') && $upcomingBookings->hasPages())
-    <div class="mt-4">
-        {{ $upcomingBookings->onEachSide(1)->links() }}
+    <div class="mt-4 d-flex justify-content-center">
+        <nav aria-label="Page navigation">
+            <ul class="pagination custom-pagination">
+                <!-- Previous Page Link -->
+                @if($upcomingBookings->onFirstPage())
+                    <li class="page-item disabled">
+                        <span class="page-link" aria-label="Previous">&laquo;</span>
+                    </li>
+                @else
+                    <li class="page-item">
+                        <a class="page-link" href="{{ $upcomingBookings->previousPageUrl() }}" rel="prev" aria-label="Previous">&laquo;</a>
+                    </li>
+                @endif
+
+                <!-- Page Numbers -->
+                @php
+                    $currentPage = $upcomingBookings->currentPage();
+                    $lastPage = $upcomingBookings->lastPage();
+                    $window = 1; // Pages to show on each side of current page
+                @endphp
+
+                <!-- First Page -->
+                @if($currentPage > ($window + 2))
+                    <li class="page-item">
+                        <a class="page-link" href="{{ $upcomingBookings->url(1) }}">1</a>
+                    </li>
+                    @if($currentPage > ($window + 3))
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    @endif
+                @endif
+
+                <!-- Pages Around Current -->
+                @for($i = max(1, $currentPage - $window); $i <= min($lastPage, $currentPage + $window); $i++)
+                    <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                        <a class="page-link" href="{{ $upcomingBookings->url($i) }}">{{ $i }}</a>
+                    </li>
+                @endfor
+
+                <!-- Last Page -->
+                @if($currentPage < ($lastPage - $window - 1))
+                    @if($currentPage < ($lastPage - $window - 2))
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    @endif
+                    <li class="page-item">
+                        <a class="page-link" href="{{ $upcomingBookings->url($lastPage) }}">{{ $lastPage }}</a>
+                    </li>
+                @endif
+
+                <!-- Next Page Link -->
+                @if($upcomingBookings->hasMorePages())
+                    <li class="page-item">
+                        <a class="page-link" href="{{ $upcomingBookings->nextPageUrl() }}" rel="next" aria-label="Next">&raquo;</a>
+                    </li>
+                @else
+                    <li class="page-item disabled">
+                        <span class="page-link" aria-label="Next">&raquo;</span>
+                    </li>
+                @endif
+            </ul>
+        </nav>
     </div>
     @endif
 
@@ -380,41 +459,48 @@
         </div>
     </div>
 
-    <!-- Legend -->
-    <div class="card shadow-sm">
-        <div class="card-body py-2">
-            <div class="d-flex flex-wrap gap-3 justify-content-center">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-warning me-1">□</span>
-                    <span class="small">Pending</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-success me-1">□</span>
-                    <span class="small">Approved</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-danger me-1">□</span>
-                    <span class="small">Rejected</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-primary me-1">□</span>
-                    <span class="small">Completed</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-secondary me-1">□</span>
-                    <span class="small">Cancelled</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-orange me-1">□</span>
-                    <span class="small">Needs Return</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-purple me-1">□</span>
-                    <span class="small">Return Submitted</span>
+<!-- Improved Legend -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-2">
+        <h6 class="mb-0">Booking Status Legend</h6>
+    </div>
+    <div class="card-body py-2">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #FBBC05;"></span>
+                        <span class="small">Pending</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #34A853;"></span>
+                        <span class="small">Approved</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #EA4335;"></span>
+                        <span class="small">Rejected</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #1A73E8;"></span>
+                        <span class="small">Completed</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #5F6368;"></span>
+                        <span class="small">Cancelled</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #FF9800;"></span>
+                        <span class="small">Needs Return</span>
+                    </div>
+                    <div class="d-flex align-items-center me-3 mb-2">
+                        <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background-color: #9C27B0;"></span>
+                        <span class="small">Return Submitted</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection
 
