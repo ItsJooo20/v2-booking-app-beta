@@ -319,6 +319,15 @@
                 </div>
             @endif
 
+            <!-- Flash Error (from session) -->
+            @if (session('error'))
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    {{ session('error') }}
+                </div>
+            @endif
+
+
             <!-- Error Messages -->
             @if ($errors->any())
                 <div class="alert alert-danger" role="alert">
@@ -381,7 +390,7 @@
                 </div>
 
                 <!-- Remember Me & Forgot Password -->
-                <div class="remember-forgot">
+                {{-- <div class="remember-forgot">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="remember_me" name="remember">
                         <label class="form-check-label" for="remember_me">
@@ -394,7 +403,7 @@
                             Forgot your password?
                         </a>
                     @endif
-                </div>
+                </div> --}}
 
                 <!-- Submit Button -->
                 <div class="d-grid mb-3">
@@ -405,10 +414,10 @@
                 </div>
 
                 <!-- Register Link -->
-                <div class="text-center">
+                {{-- <div class="text-center">
                     <span class="text-muted">Don't have an account?</span>
                     <a href="{{ route('register') }}" class="auth-link ms-1">Create one here</a>
-                </div>
+                </div> --}}
             </form>
         </div>
     </div>

@@ -19,21 +19,21 @@ class BookingService
             ->get();
     }
 
-    public function getUpcomingBookings(int $perPage = 3): LengthAwarePaginator
+    public function getUpcomingBookings(): LengthAwarePaginator
     {
         return Booking::with(['user', 'facilityItem'])
             ->where('start_datetime', '>=', Carbon::now())
             ->orderBy('start_datetime', 'asc')
-            ->paginate($perPage);
+            ->paginate();
     }
 
-    public function getUserUpcomingBookings(int $userId, int $perPage = 3): LengthAwarePaginator
+    public function getUserUpcomingBookings(int $userId): LengthAwarePaginator
     {
         return Booking::with(['user', 'facilityItem'])
             ->where('user_id', $userId)
             ->where('start_datetime', '>=', Carbon::now())
             ->orderBy('start_datetime', 'asc')
-            ->paginate($perPage);
+            ->paginate();
     }
 
     public function findById(int $id): Booking

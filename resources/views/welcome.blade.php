@@ -297,18 +297,18 @@
                                     <i class="bi bi-box-arrow-in-right me-2"></i> Log In
                                 </a>
                                 
-                                @if (Route::has('register'))
+                                {{-- @if (Route::has('register'))
                                     <a href="{{ route('register') }}" class="btn btn-outline-primary">
                                         <i class="bi bi-person-plus me-2"></i> Register
                                     </a>
-                                @endif
+                                @endif --}}
                             @endauth
                         </div>
                     @endif
                     
-                    <p class="text-muted mb-0">
+                    {{-- <p class="text-muted mb-0">
                         Need help? <a href="#" class="auth-link">Contact support</a>
-                    </p>
+                    </p> --}}
                 </div>
             </div>
         </div>

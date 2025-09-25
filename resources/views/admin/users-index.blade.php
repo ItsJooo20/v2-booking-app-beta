@@ -18,23 +18,12 @@
     </div>
     @endif
 
-    {{-- @if(session('success'))
-            <div class="alert alert-success text-center">
-                {{ session('success') }}
-            </div>
-        @endif --}}
-
-        @if(session('error'))
-        <div class="alert alert-error alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="error" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        @endif
-    {{-- @if(session('error'))
-        <div class="alert alert-danger text-center">
-            {{ session('error') }}
-        </div>
-    @endif --}}
+    @if(session('error'))
+    <div class="alert alert-error alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="error" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
 
     <div class="card shadow-sm">
         <div class="card-body">
@@ -65,9 +54,6 @@
                     </a>
                 </div>
             </form>
-            
-            
-            
 
             <div class="table-responsive">
                 <table class="table table-hover">
@@ -77,7 +63,6 @@
                             <th>Email</th>
                             <th>Role</th>
                             <th>Phone</th>
-                            {{-- <th>Status</th> --}}
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -92,13 +77,6 @@
                                 </span>
                             </td>
                             <td>{{ $user->phone ?: 'N/A' }}</td>
-                            {{-- <td>
-                                @if($user->is_active)
-                                <span class="badge bg-success">Active</span>
-                                @else
-                                <span class="badge bg-secondary">Inactive</span>
-                                @endif
-                            </td> --}}
                             <td class="text-end">
                                 <div class="btn-group">
                                     <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-primary me-2">
@@ -112,12 +90,6 @@
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
                                     </form>
-                                    {{-- <a href="{{ route('users.destroy', $user) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-trash"></i>
-                                    </a> --}}
-                                    {{-- <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $user->id }}">
-                                        <i class="bi bi-trash"></i>
-                                    </button> --}}
                                     @else
                                     <form action="{{ route('users.restore', $user->id) }}" method="POST" class="d-inline">
                                         @csrf
@@ -128,31 +100,6 @@
                                     </form>
                                     @endif
                                 </div>
-                                
-                                <!-- Delete Modal -->
-                                
-                                
-                                {{-- <div class="modal fade" id="deleteModal{{ $user->id }}" tabindex="-1" data-bs-backdrop="static" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="deleteModalLabel">Deactivate User</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                Are you sure you want to deactivate {{ $user->name }}? This user will no longer be able to log in.
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <form action="{{ route('users.destroy', $user) }}" method="POST">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Deactivate</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div> --}}
                             </td>
                         </tr>
                         @empty
@@ -166,7 +113,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="d-flex justify-content-center mt-4">
                 {{ $users->links() }}
             </div>
@@ -174,3 +121,50 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    /* Fix oversized pagination arrows */
+    .pagination svg, 
+    nav svg, 
+    .page-item svg, 
+    .page-link svg,
+    [aria-label="Previous"] svg,
+    [aria-label="Next"] svg {
+        width: 20px !important;
+        height: 20px !important;
+        max-width: 20px !important;
+        max-height: 20px !important;
+    }
+
+    .page-link {
+        line-height: 1;
+        padding: 0.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Target specifically the pagination container */
+    nav[aria-label="Pagination Navigation"] {
+        max-width: 100%;
+        overflow: hidden;
+    }
+    
+    .pagination .page-item .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .card-img-top {
+        transition: transform 0.3s ease;
+    }
+    
+    .card:hover .card-img-top {
+        transform: scale(1.03);
+    }
+</style>
+@endpush

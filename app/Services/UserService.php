@@ -48,6 +48,7 @@ class UserService
             'role' => $data['role'],
             'phone' => $data['phone'],
             'is_active' => true,
+            'email_verified_at' => Carbon::now(),
         ]);
     }
 

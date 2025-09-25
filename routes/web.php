@@ -14,13 +14,13 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// Admin routes with role-based access control
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     require __DIR__.'/admin/dashboard.php';
     require __DIR__.'/admin/users.php';
     require __DIR__.'/admin/facilities.php';
     require __DIR__.'/admin/bookings.php';
     require __DIR__.'/admin/reports.php';
-
 });
 
 require __DIR__.'/auth.php';
