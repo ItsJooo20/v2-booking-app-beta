@@ -1,8 +1,13 @@
 <?php
 
+use App\Mail\testMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\SendNotifApi;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\FirebasePushController;
 
 Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -11,6 +16,12 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
     ->name('verification.verify');
+
+    Route::prefix('notifications')->group(function () {
+        Route::post('/register-token', [NotificationController::class, 'registerToken']);
+        Route::post('/send-to-all', [NotificationController::class, 'sendToAll']);
+        Route::post('/send-to-user/{userId}', [NotificationController::class, 'sendToUser']);
+    });
 });
 
 Route::middleware('auth:sanctum')->group(function () {

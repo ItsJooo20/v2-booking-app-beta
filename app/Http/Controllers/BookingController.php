@@ -80,6 +80,39 @@ class BookingController extends Controller
         return view('admin.bookings-edit', compact('booking', 'facilities'));
     }
 
+    public function approve(ApproveBookingRequest $request, Booking $booking)
+    {
+        if (!$this->bookingService->checkAvailability(
+            $booking->facility_item_id,
+            $booking->start_datetime,
+            $booking->end_datetime,
+            $booking->id
+        )) {
+            return redirect()->route('bookings.show', $booking->id)
+                ->with('error', 'This timeslot is no longer available.');
+        }
+
+        $result = $this->bookingService->approveBooking($booking);
+        
+        $message = 'Booking approved successfully.';
+        if ($result['rejected_count'] > 0) {
+            $message .= ' ' . $result['rejected_count'] . ' conflicting bookings were rejected.';
+        }
+        
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('success', $message);
+    }
+
+    public function reject(Booking $booking)
+    {
+        // $this->authorize('approve', $booking);
+        
+        $this->bookingService->rejectBooking($booking);
+        
+        return redirect()->route('bookings.show', $booking->id)
+            ->with('success', 'Booking rejected successfully.');
+    }
+
     public function update(UpdateBookingRequest $request, Booking $booking)
     {
         // $this->authorize('update', $booking);
@@ -103,6 +136,7 @@ class BookingController extends Controller
             ->with('success', 'Booking updated successfully.');
     }
 
+
     public function destroy(Booking $booking)
     {
         // $this->authorize('delete', $booking);
@@ -111,35 +145,6 @@ class BookingController extends Controller
         
         return redirect()->route('bookings.index')
             ->with('success', 'Booking cancelled successfully.');
-    }
-
-    public function approve(ApproveBookingRequest $request, Booking $booking)
-    {
-        if (!$this->bookingService->checkAvailability(
-            $booking->facility_item_id,
-            $booking->start_datetime,
-            $booking->end_datetime,
-            $booking->id
-        )) {
-            return redirect()->route('bookings.show', $booking->id)
-                ->with('error', 'This timeslot is no longer available.');
-        }
-
-        $result = $this->bookingService->approveBooking($booking);
-        
-        return redirect()->route('bookings.show', $booking->id)
-            ->with('success', 'Booking approved successfully. ' . 
-                $result['rejected_count'] . ' conflicting bookings were rejected.');
-    }
-
-    public function reject(Booking $booking)
-    {
-        // $this->authorize('approve', $booking);
-        
-        $this->bookingService->rejectBooking($booking);
-        
-        return redirect()->route('bookings.show', $booking->id)
-            ->with('success', 'Booking rejected successfully.');
     }
 
     // Add these methods to your existing BookingController

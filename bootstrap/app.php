@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use App\Http\Middleware\UpdateBookingStatus;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule; // <-- ini yang belum ada
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -40,8 +41,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            // 'fcm' => \App\Channels\FcmChannel::class,
         ]);
     })
+    
+    ->withSchedule(function (Schedule $schedule) {
+        // Jalankan worker setiap menit
+        $schedule->command('queue:work --stop-when-empty')->everyMinute();
+    })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

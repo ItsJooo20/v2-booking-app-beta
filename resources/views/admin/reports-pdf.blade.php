@@ -68,10 +68,10 @@
         </table>
     </div>
 
-    <div class="row" style="display: flex; margin-bottom: 20px;">
+    {{-- <div class="row" style="display: flex; margin-bottom: 20px;">
         <div class="section" style="flex: 1; margin-right: 10px;">
             <h3 class="section-title">Top 5 Most Requested Items</h3>
-            {{-- @if($mostRequested->isNotEmpty())
+            @if($mostRequested->isNotEmpty())
             <table>
                 <thead>
                     <tr>
@@ -90,12 +90,12 @@
             </table>
             @else
             <p>No data available</p>
-            @endif --}}
-        </div>
+            @endif
+        </div> --}}
 
-        <div class="section" style="flex: 1; margin-left: 10px;">
+        {{-- <div class="section" style="flex: 1; margin-left: 10px;">
             <h3 class="section-title">Top 5 Most Booked Facilities</h3>
-            {{-- @if($mostBooked->isNotEmpty())
+            @if($mostBooked->isNotEmpty())
             <table>
                 <thead>
                     <tr>
@@ -114,8 +114,8 @@
             </table>
             @else
             <p>No data available</p>
-            @endif --}}
-        </div>
+            @endif
+        </div> --}}
     </div>
 </body>
 </html>

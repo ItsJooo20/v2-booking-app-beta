@@ -6,6 +6,8 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Booking;
 use App\Models\FacilityItem;
+use App\Jobs\SendBookingEmail;
+use App\Jobs\SendBookingNotificationJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\BookingEquipmentRequest;
@@ -194,7 +196,22 @@ class BookingApiService{
             $booking->save();
 
             $booking->load(['facilityItem']);
-            
+
+            // DB::afterCommit(function () use ($booking) {
+            //     $admins = User::where('role', 'admin')->select('email')->get();
+            //     SendBookingEmail::dispatch($booking, $admins);
+            //     // (new SendBookingEmail($booking, $admins))->handle();
+            // });
+
+            // SendBookingNotificationJob::dispatch($booking);
+
+            $admins = User::where('role', 'superadmin')->get();
+        
+            foreach ($admins as $index => $admin) {
+                SendBookingNotificationJob::dispatch($booking, $admin->id)
+                    ->delay(now()->addSeconds($index * 5)); // 5 seconds between each email
+            }
+
             return $booking;
         });
     }

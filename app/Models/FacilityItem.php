@@ -25,7 +25,8 @@ class FacilityItem extends Model
     
     public function facilityItemImage()
     {
-        return $this->belongsTo(FacilityItemImage::class, 'facility_id');
+        return $this->hasOne(FacilityItemImage::class, 'facility_item_id')
+            ->where('is_primary', 1);
     }
 
     public function facility()

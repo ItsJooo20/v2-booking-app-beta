@@ -3,15 +3,191 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use App\Models\User;
 use App\Models\Booking;
 use App\Models\FacilityItem;
+use App\Jobs\SendBookingEmail;
+use App\Jobs\SendBookingNotificationJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\FirebaseNotificationService;
 
 class BookingService
 {
+    protected $firebaseService;
+
+    public function __construct(FirebaseNotificationService $firebaseService)
+    {
+        $this->firebaseService = $firebaseService;
+    }
+
+    public function updateBooking(Booking $booking, array $data): Booking
+    {
+        return DB::transaction(function () use ($booking, $data) {
+            $userId = $booking->user_id;
+            $facilityName = $booking->facilityItem->facility->name ?? 'Facility';
+            $itemCode = $booking->facilityItem->item_code ?? '';
+            $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
+
+            
+            // Check if significant changes occurred
+            $hasSignificantChanges = false;
+            $changeDetails = [];
+
+            if (isset($data['start_datetime']) && $data['start_datetime'] != $booking->start_datetime) {
+                $hasSignificantChanges = true;
+                $changeDetails[] = 'start time';
+            }
+
+            if (isset($data['end_datetime']) && $data['end_datetime'] != $booking->end_datetime) {
+                $hasSignificantChanges = true;
+                $changeDetails[] = 'end time';
+            }
+
+            if (isset($data['facility_item_id']) && $data['facility_item_id'] != $booking->facility_item_id) {
+                $hasSignificantChanges = true;
+                $changeDetails[] = 'facility';
+            }
+
+            $booking->fill($data);
+            $booking->save();
+
+            // Send notification only if there are significant changes
+            $this->sendBookingNotification(
+                $userId,
+                'Booking Status Updated 📝',
+                "Your booking for {$itemCode} status is now: {$booking->status}",
+                [
+                    'booking_id' => (string)$booking->id,
+                    'status' => $booking->status,
+                    'type' => 'booking_status_update'
+                ],
+                $imageUrl
+            );
+
+            return $booking;
+        });
+    }
+
+    public function cancelBooking(Booking $booking): Booking
+    {
+        $userId = $booking->user_id;
+        $facilityName = $booking->facilityItem->facility->name ?? 'Facility';
+        $itemCode = $booking->facilityItem->item_code ?? '';
+        $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
+
+        $booking->status = 'cancelled';
+        $booking->save();
+
+        $this->sendBookingNotification(
+                $userId,
+                'Booking Cancelled!',
+                "Your booking for {$itemCode} has been {$booking->status}!",
+                [
+                    'booking_id' => (string)$booking->id,
+                    'status' => 'cancelled',
+                    'type' => 'booking_status_update'
+                ],
+                $imageUrl
+            );
+
+        return $booking;
+    }
+
+    public function approveBooking(Booking $booking): array
+    {
+        return DB::transaction(function () use ($booking) {
+            $rejectedCount = 0;
+
+            // Get the user ID before status change
+            $userId = $booking->user_id;
+            $facilityName = $booking->facilityItem->facility->name ?? 'Facility';
+            $itemCode = $booking->facilityItem->item_code ?? '';
+            $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
+
+            // Approve the selected booking
+            $booking->status = 'approved';
+            $booking->save();
+
+            // Send push notification to the user whose booking was approved
+            $this->sendBookingNotification(
+                $userId,
+                'Booking Approved ✅',
+                "Your booking for {$itemCode} has been {$booking->status}!",
+                [
+                    'booking_id' => (string)$booking->id,
+                    'status' => 'approved',
+                    'type' => 'booking_status_update'
+                ],
+                $imageUrl
+            );
+
+            // Find and reject all conflicting pending bookings
+            $conflictingBookings = Booking::where('facility_item_id', $booking->facility_item_id)
+                ->where('id', '!=', $booking->id)
+                ->where('status', 'pending')
+                ->where(function($query) use ($booking) {
+                    $this->addOverlapConditions($query, $booking);
+                })
+                ->get();
+
+            $rejectedCount = $conflictingBookings->count();
+
+            foreach ($conflictingBookings as $conflict) {
+                $conflictUserId = $conflict->user_id;
+                $conflict->status = 'rejected';
+                $conflict->save();
+
+                // Send push notification to users whose bookings were rejected due to conflict
+                $this->sendBookingNotification(
+                    $conflictUserId,
+                    'Booking Rejected ❌',
+                    "Your booking for {$itemCode} has been {$booking->status} due to scheduling conflict.",
+                    [
+                        'booking_id' => (string)$conflict->id,
+                        'status' => 'rejected',
+                        'type' => 'booking_status_update',
+                        'reason' => 'scheduling_conflict'
+                    ],
+                    $imageUrl
+                );
+            }
+
+            return [
+                'booking' => $booking,
+                'rejected_count' => $rejectedCount
+            ];
+        });
+    }
+
+    public function rejectBooking(Booking $booking): Booking
+    {
+        $userId = $booking->user_id;
+        $facilityName = $booking->facilityItem->facility->name ?? 'Facility';
+        $itemCode = $booking->facilityItem->item_code ?? '';
+        $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
+
+        $booking->status = 'rejected';
+        $booking->save();
+
+        // Send push notification to the user whose booking was rejected
+        $this->sendBookingNotification(
+            $userId,
+            'Booking Rejected ❌',
+            "Your booking for {$itemCode} has been {$booking->status}.",
+            [
+                'booking_id' => (string)$booking->id,
+                'status' => 'rejected',
+                'type' => 'booking_status_update'
+            ],
+            $imageUrl
+        );
+
+        return $booking;
+    }
+
     public function getAllBookings(): Collection
     {
         return Booking::with(['user', 'facilityItem.facility'])
@@ -45,77 +221,32 @@ class BookingService
     {
         return DB::transaction(function () use ($data) {
             $booking = new Booking();
-            $booking->user_id = $data['user_id']; // Changed from auth()->id()
+            $booking->user_id = $data['user_id']; // bisa juga pakai auth()->id() kalau login
             $booking->facility_item_id = $data['facility_item_id'];
             $booking->start_datetime = $data['start_datetime'];
             $booking->end_datetime = $data['end_datetime'];
             $booking->purpose = $data['purpose'];
             $booking->status = 'pending';
             $booking->save();
-            
-            return $booking;
-        });
-    }
 
-    public function updateBooking(Booking $booking, array $data): Booking
-    {
-        return DB::transaction(function () use ($booking, $data) {
-            $booking->fill($data);
-            
-            // If not admin updating, reset status to pending
-            // if (!in_array(auth()->user()->role, ['admin', 'headmaster'])) {
-            //     $booking->status = 'pending';
-            // }
-            
-            $booking->save();
-            return $booking;
-        });
-    }
+            // Pastikan job dikirim setelah transaksi commit
+            // DB::afterCommit(function () use ($booking) {
+            //     $admins = User::where('role', 'admin')->select('email')->get();
+            //     SendBookingEmail::dispatch($booking, $admins);
+            //     // (new SendBookingEmail($booking, $admins))->handle();
+            // });
 
-    public function cancelBooking(Booking $booking): Booking
-    {
-        $booking->status = 'cancelled';
-        $booking->save();
-        return $booking;
-    }
+            // SendBookingNotificationJob::dispatch($booking);
 
-    public function approveBooking(Booking $booking): array
-    {
-        return DB::transaction(function () use ($booking) {
-            $rejectedCount = 0;
-
-            // Approve the selected booking
-            $booking->status = 'approved';
-            $booking->save();
-
-            // Find and reject all conflicting pending bookings
-            $conflictingBookings = Booking::where('facility_item_id', $booking->facility_item_id)
-                ->where('id', '!=', $booking->id)
-                ->where('status', 'pending')
-                ->where(function($query) use ($booking) {
-                    $this->addOverlapConditions($query, $booking);
-                })
-                ->get();
-
-            $rejectedCount = $conflictingBookings->count();
-
-            foreach ($conflictingBookings as $conflict) {
-                $conflict->status = 'rejected';
-                $conflict->save();
+            $admins = User::where('role', 'superadmin')->get();
+        
+            foreach ($admins as $index => $admin) {
+                SendBookingNotificationJob::dispatch($booking, $admin->id)
+                    ->delay(now()->addSeconds($index * 5)); // 5 seconds between each email
             }
 
-            return [
-                'booking' => $booking,
-                'rejected_count' => $rejectedCount
-            ];
+            return $booking;
         });
-    }
-
-    public function rejectBooking(Booking $booking): Booking
-    {
-        $booking->status = 'rejected';
-        $booking->save();
-        return $booking;
     }
 
     public function checkAvailability(int $facilityItemId, string $start, string $end, ?int $excludeBookingId = null): bool
@@ -250,6 +381,10 @@ class BookingService
         foreach ($expiredApproved as $booking) {
             $facility = $booking->facilityItem->facility;
             $category = $facility->category;
+            $userId = $booking->user_id;
+            $facilityName = $facility->name ?? 'Facility';
+            $itemCode = $booking->facilityItem->item_code ?? '';
+            $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
             
             $requiresReturn = $category->requires_return ?? false;
 
@@ -264,12 +399,42 @@ class BookingService
                     $booking->updated_at = $now;
                     $booking->save();
                     $counts['completed']++;
+
+                    // Send notification for completed booking
+                    $this->sendBookingNotification(
+                        $userId,
+                        'Booking Completed!',
+                        "Your booking for {$itemCode} has been {$booking->status}.",
+                        [
+                            'booking_id' => (string)$booking->id,
+                            'status' => 'completed',
+                            'type' => 'booking_status_update',
+                            'reason' => 'expired_with_verified_return'
+                        ],
+                        $imageUrl
+                    );
+
                     Log::info("Main booking {$booking->id} marked as completed (verified return)");
                 } else {
                     $booking->status = 'needs return';
                     $booking->updated_at = $now;
                     $booking->save();
                     $counts['needs_return']++;
+
+                    // Send notification for needs return
+                    $this->sendBookingNotification(
+                        $userId,
+                        'Equipment Return Required 🔄',
+                        "Your booking for {$itemCode} has expired. Please return the equipment.",
+                        [
+                            'booking_id' => (string)$booking->id,
+                            'status' => 'needs return',
+                            'type' => 'booking_status_update',
+                            'reason' => 'expired_needs_return'
+                        ],
+                        $imageUrl
+                    );
+
                     Log::info("Main booking {$booking->id} marked as needs return");
                 }
             } else {
@@ -277,6 +442,21 @@ class BookingService
                 $booking->updated_at = $now;
                 $booking->save();
                 $counts['completed']++;
+
+                // Send notification for completed booking
+                $this->sendBookingNotification(
+                    $userId,
+                    'Booking Completed ✅',
+                    "Your booking for {$itemCode} has been completed.",
+                    [
+                        'booking_id' => (string)$booking->id,
+                        'status' => 'completed',
+                        'type' => 'booking_status_update',
+                        'reason' => 'expired_no_return_required'
+                    ],
+                    $imageUrl
+                );
+
                 Log::info("Main booking {$booking->id} marked as completed (no return required)");
             }
         }
@@ -287,10 +467,30 @@ class BookingService
             ->get();
 
         foreach ($expiredPending as $booking) {
+            $userId = $booking->user_id;
+            $facilityName = $booking->facilityItem->facility->name ?? 'Facility';
+            $itemCode = $booking->facilityItem->item_code ?? '';
+            $imageUrl = url('storage/' . $booking->facilityItem->facilityItemImage->image_path)?? null;
+
             $booking->status = 'cancelled';
             $booking->updated_at = $now;
             $booking->save();
             $counts['cancelled']++;
+
+            // Send notification for cancelled booking
+            $this->sendBookingNotification(
+                $userId,
+                'Booking Cancelled ❌',
+                "Your booking for{$itemCode} has been cancelled due to expiration.",
+                [
+                    'booking_id' => (string)$booking->id,
+                    'status' => 'cancelled',
+                    'type' => 'booking_status_update',
+                    'reason' => 'expired_while_pending'
+                ],
+                $imageUrl
+            );
+
             Log::info("Main booking {$booking->id} cancelled (expired while pending)");
         }
 
@@ -439,5 +639,35 @@ class BookingService
         }
 
         return false;
+    }
+
+    private function sendBookingNotification(int $userId, string $title, string $body, array $data = [], ?string $imageUrl = null)
+    {
+        try {
+            // Get user's device tokens
+            $tokens = \App\Models\DeviceToken::where('user_id', $userId)
+                                        ->pluck('device_token')
+                                        ->toArray();
+
+            if (!empty($tokens)) {
+                $result = $this->firebaseService->sendToMultipleTokens(
+                    $tokens,
+                    $title,
+                    $body,
+                    $data,
+                    $imageUrl // Tambahkan parameter imageUrl
+                );
+
+                if ($result['success']) {
+                    Log::info("Push notification sent successfully to user {$userId}: {$title}");
+                } else {
+                    Log::error("Failed to send push notification to user {$userId}: " . $result['message']);
+                }
+            } else {
+                Log::info("No device tokens found for user {$userId}");
+            }
+        } catch (\Exception $e) {
+            Log::error("Error sending push notification to user {$userId}: " . $e->getMessage());
+        }
     }
 }

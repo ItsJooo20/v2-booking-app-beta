@@ -13,6 +13,9 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+    'firebase' => [
+        'credentials' => storage_path('app/firebase/firebase-credentials.json'),
+    ],
 
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),

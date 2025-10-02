@@ -76,7 +76,7 @@
                         <div class="card-body">
                             <ul class="list-group list-group-flush">
                                 <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                                    Total Bookings
+                                    Total Finished Bookings
                                     <span class="badge bg-primary rounded-pill">{{ $bookings->where('status', 'completed')->count() }}</span>
                                 </li>
                                 {{-- <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">

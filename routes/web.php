@@ -9,6 +9,16 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\FacilityItemController;
 use App\Http\Controllers\FacilityCategoryController;
+use Kreait\Laravel\Firebase\Facades\Firebase;
+
+Route::get('/test-firebase', function () {
+    try {
+        $messaging = Firebase::messaging();
+        return 'Firebase connected successfully!';
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
 
 Route::get('/', function () {
     return view('welcome');

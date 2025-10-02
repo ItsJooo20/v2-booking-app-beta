@@ -83,6 +83,13 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (!$user->is_active) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your account is inactive. Please contact admin.',
+            ], 403);
+        }
+
         // if (!$user->hasVerifiedEmail()) {
         //     return response()->json([
         //         'status' => false,

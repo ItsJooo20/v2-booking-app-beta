@@ -314,7 +314,7 @@
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ route('admin.dashboard') }}">
-                <i class="bi bi-building-gear me-2"></i> Facility Admin
+                <i class="bi bi-building-gear me-2"></i> Panel Admin
             </a>
     
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
@@ -325,28 +325,28 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a href="{{ route('admin.dashboard') }}" class="nav-link">
-                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                            <i class="bi bi-speedometer2 me-1"></i> Beranda
                         </a>
                     </li>
     
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-people me-1"></i> Users
+                            <i class="bi bi-people me-1"></i> User
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ route('users.list') }}">All Users</a></li>
-                            <li><a class="dropdown-item" href="{{ route('users.deleted') }}">Deleted Users</a></li>
+                            <li><a class="dropdown-item" href="{{ route('users.list') }}">Semua User</a></li>
+                            <li><a class="dropdown-item" href="{{ route('users.deleted') }}">User Nonaktif</a></li>
                         </ul>
                     </li>
     
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="categoryDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-tags me-1"></i> Facility
+                            <i class="bi bi-tags me-1"></i> Fasilitas
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ route('facility-categories.index') }}">Categories</a></li>
-                            <li><a class="dropdown-item" href="{{ route('facilities.index') }}">Facilities</a></li>
-                            <li><a class="dropdown-item" href="{{ route('facility-items.index') }}">Items</a></li>
+                            <li><a class="dropdown-item" href="{{ route('facility-categories.index') }}">Kategori</a></li>
+                            <li><a class="dropdown-item" href="{{ route('facilities.index') }}">Fasilitas</a></li>
+                            <li><a class="dropdown-item" href="{{ route('facility-items.index') }}">Item</a></li>
                         </ul>
                     </li>
     
@@ -362,12 +362,12 @@
     
                     <li class="nav-item">
                         <a href="{{ route('bookings.index') }}" class="nav-link">
-                            <i class="bi bi-calendar-check me-1"></i> Bookings
+                            <i class="bi bi-calendar-check me-1"></i> Booking
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('reports.index') }}" class="nav-link">
-                            <i class="bi bi-graph-up me-1"></i> Reports
+                            <i class="bi bi-graph-up me-1"></i> Laporan
                         </a>
                     </li>
                 </ul>

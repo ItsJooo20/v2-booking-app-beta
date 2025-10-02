@@ -28,6 +28,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'phone',
         'is_active',
+        'fcm_token',
         'image_profile',
         'email_verified_at',
     ];
@@ -58,6 +59,11 @@ class User extends Authenticatable implements MustVerifyEmail
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    public function routeNotificationForFcm()
+    {
+        return $this->fcm_token; // Make sure you have this column in your users table
     }
 
     /**

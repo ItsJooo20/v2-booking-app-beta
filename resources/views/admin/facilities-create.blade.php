@@ -1,13 +1,13 @@
 @extends('layout.navbar')
 
-@section('title', 'Create Facility')
+@section('title', 'Buat Fasilitas')
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Create Facility</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h1 class="h3 mb-0">Buat Fasilitas</h1>
         <a href="{{ route('facilities.index') }}" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left me-1"></i> Back to Facilities
+            <i class="bi bi-arrow-left me-1"></i> Kembali ke Daftar
         </a>
     </div>
 
@@ -15,37 +15,52 @@
         <div class="card-body">
             <form action="{{ route('facilities.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                
+
                 <div class="mb-3">
-                    <label for="name" class="form-label">Facility Name</label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required>
+                    <label for="name" class="form-label">Nama Fasilitas <span class="text-danger">*</span></label>
+                    <input type="text"
+                           class="form-control @error('name') is-invalid @enderror"
+                           id="name"
+                           name="name"
+                           value="{{ old('name') }}"
+                           required>
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                
+
                 <div class="mb-3">
-                    <label for="description" class="form-label">Description</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description') }}</textarea>
+                    <label for="description" class="form-label">Deskripsi</label>
+                    <textarea class="form-control @error('description') is-invalid @enderror"
+                              id="description"
+                              name="description"
+                              rows="3">{{ old('description') }}</textarea>
                     @error('description')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                
+
                 <div class="mb-3">
-                    <label for="image" class="form-label">Facility Image</label>
-                    <input type="file" class="form-control @error('image') is-invalid @enderror" id="image" name="image">
-                    <div class="form-text">Upload a representative image for this facility (JPEG, PNG, JPG, GIF, max 2MB)</div>
-                    <div id="image-preview" class="mt-2"></div>
+                    <label for="image" class="form-label">Gambar Fasilitas</label>
+                    <input type="file"
+                           class="form-control @error('image') is-invalid @enderror"
+                           id="image"
+                           name="image"
+                           accept="image/*">
+                    <div class="form-text">Format: JPEG, PNG, JPG, GIF. Maks 2MB.</div>
                     @error('image')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                    <div id="image-preview" class="mt-2"></div>
                 </div>
-                
+
                 <div class="mb-3">
-                    <label for="category_id" class="form-label">Category</label>
-                    <select class="form-select @error('category_id') is-invalid @enderror" id="category_id" name="category_id" required>
-                        <option value="">Select a category</option>
+                    <label for="category_id" class="form-label">Kategori <span class="text-danger">*</span></label>
+                    <select class="form-select @error('category_id') is-invalid @enderror"
+                            id="category_id"
+                            name="category_id"
+                            required>
+                        <option value="">Pilih kategori</option>
                         @foreach($categories as $category)
                             <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                                 {{ $category->name }}
@@ -56,37 +71,47 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-check">
-                            <input class="form-check-input @error('can_be_addon') is-invalid @enderror" type="checkbox" id="can_be_addon" name="can_be_addon" value="1" {{ old('can_be_addon') ? 'checked' : '' }}>
+                            <input class="form-check-input @error('can_be_addon') is-invalid @enderror"
+                                   type="checkbox"
+                                   id="can_be_addon"
+                                   name="can_be_addon"
+                                   value="1"
+                                   {{ old('can_be_addon') ? 'checked' : '' }}>
                             <label class="form-check-label" for="can_be_addon">
-                                Can be add-on
+                                Dapat menjadi Add-on
                             </label>
-                            <div class="form-text">This facility can be added on to other facilities</div>
+                            <div class="form-text">Fasilitas ini dapat ditambahkan ke fasilitas lain.</div>
                             @error('can_be_addon')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-check">
-                            <input class="form-check-input @error('can_have_addon') is-invalid @enderror" type="checkbox" id="can_have_addon" name="can_have_addon" value="1" {{ old('can_have_addon') ? 'checked' : '' }}>
+                            <input class="form-check-input @error('can_have_addon') is-invalid @enderror"
+                                   type="checkbox"
+                                   id="can_have_addon"
+                                   name="can_have_addon"
+                                   value="1"
+                                   {{ old('can_have_addon') ? 'checked' : '' }}>
                             <label class="form-check-label" for="can_have_addon">
-                                Can have add-ons
+                                Dapat memiliki Add-on
                             </label>
-                            <div class="form-text">This facility can have add-on facilities</div>
+                            <div class="form-text">Fasilitas ini dapat mempunyai fasilitas tambahan.</div>
                             @error('can_have_addon')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="text-end mt-4">
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-1"></i> Create Facility
+                        <i class="bi bi-save me-1"></i> Simpan Fasilitas
                     </button>
                 </div>
             </form>
@@ -97,13 +122,15 @@
 
 @push('scripts')
 <script>
-    document.getElementById('image').onchange = function(e) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            let preview = document.getElementById('image-preview');
-            preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="max-height: 200px;">`;
-        }
-        reader.readAsDataURL(this.files[0]);
+document.getElementById('image').addEventListener('change', function() {
+    if (!this.files.length) return;
+    const file = this.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('image-preview').innerHTML =
+            `<img src="${e.target.result}" class="img-thumbnail" style="max-height:200px;">`;
     };
+    reader.readAsDataURL(file);
+});
 </script>
 @endpush
